@@ -1,0 +1,51 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Poppins", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --color-mint: #EAF8EC;
+  --color-fresh: #B7EDAA;
+  --color-brand: #17633A;
+  --color-brand-dark: #0E4A29;
+  --color-ink: #17251C;
+  --color-ink-2: #34443A;
+  --color-line: #D3E5D6;
+  --color-danger: #A3261B;
+  --color-danger-bg: #FDECEA;
+  --color-warn: #6E4500;
+  --color-warn-bg: #FFF3D1;
+  --radius-card: 1.25rem;
+}
+
+html { -webkit-text-size-adjust: 100%; }
+body {
+  background: #FFFFFF;
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+:focus-visible {
+  outline: 3px solid var(--color-brand);
+  outline-offset: 2px;
+  border-radius: 10px;
+}
+button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
+button:disabled { cursor: not-allowed; }
+
+/* Thin green delivery-route motif */
+@keyframes route-dash { to { stroke-dashoffset: -40; } }
+.route-flow { stroke-dasharray: 6 8; animation: route-dash 1.6s linear infinite; }
+@keyframes pulse-ring { 0% { transform: scale(.6); opacity: .7 } 100% { transform: scale(2.2); opacity: 0 } }
+.pulse-ring { transform-origin: center; transform-box: fill-box; animation: pulse-ring 1.8s ease-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .route-flow, .pulse-ring { animation: none; }
+  * { transition-duration: 0ms !important; }
+}
+
+.fade-in { animation: fade-in .2s ease-out; }
+@keyframes fade-in { from { opacity: 0; transform: translateY(4px) } to { opacity: 1; transform: none } }
+
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { scrollbar-width: none; }
+
+.leaflet-container { font-family: var(--font-sans); background: var(--color-mint); }
+.nb-pin { background: transparent; border: 0; }
