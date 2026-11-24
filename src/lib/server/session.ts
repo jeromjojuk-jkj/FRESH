@@ -11,7 +11,7 @@ import type { Role } from "../types";
  */
 export type Session = { role: Role; id: string };
 const COOKIE = "nb_session";
-const secret = () => process.env.SESSION_SECRET || "nearbasket-demo-secret-change-me";
+const secret = () => process.env.SESSION_SECRET || "kripfresh-demo-secret-change-me";
 
 function sign(v: string) {
   return createHmac("sha256", secret()).update(v).digest("base64url");

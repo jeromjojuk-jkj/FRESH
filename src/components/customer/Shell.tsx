@@ -15,7 +15,7 @@ export function CustomerHeader({ back, title }: { back?: string; title?: string 
         {back ? (
           <Link href={back} className="-ml-2 grid h-11 w-11 shrink-0 place-items-center rounded-full hover:bg-mint" aria-label="Back"><IconBack /></Link>
         ) : (
-          <Link href="/" className="hidden shrink-0 pr-2 md:block" aria-label="NearBasket home"><Logo /></Link>
+          <Link href="/" className="hidden shrink-0 pr-2 md:block" aria-label="KripFresh home"><Logo /></Link>
         )}
         {title ? <h1 className="flex-1 truncate text-lg font-semibold">{title}</h1> : (
           <Link href="/address" className="group flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-xl px-1 hover:bg-mint" aria-label={a ? `Deliver to ${a.flat ? a.flat + ", " : ""}${a.line}. Edit address` : "Set delivery address"}>

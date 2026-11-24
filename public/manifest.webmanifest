@@ -1,6 +1,6 @@
 {
-  "name": "NearBasket — neighbourhood groceries",
-  "short_name": "NearBasket",
+  "name": "KripFresh — neighbourhood groceries",
+  "short_name": "KripFresh",
   "description": "Groceries from supermarkets within 3 km, delivered and tracked live.",
   "id": "/",
   "start_url": "/?source=pwa",

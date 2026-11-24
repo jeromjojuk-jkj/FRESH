@@ -1,6 +1,6 @@
-// NearBasket service worker: makes the app installable and keeps the shell usable on
+// KripFresh service worker: makes the app installable and keeps the shell usable on
 // flaky connections. API responses are never cached (prices, stock and orders must be live).
-const VERSION = "nb-v1";
+const VERSION = "kf-v1";
 const SHELL = ["/", "/offline.html", "/manifest.webmanifest", "/icons/icon-192.png"];
 
 self.addEventListener("install", (e) => {

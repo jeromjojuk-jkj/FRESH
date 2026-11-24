@@ -1,4 +1,4 @@
-// The NearBasket motif: a thin green route linking supermarket → rider → customer.
+// The KripFresh motif: a thin green route linking supermarket → rider → customer.
 type Props = { progress?: number; animated?: boolean; labels?: boolean; className?: string; title?: string };
 
 const P0 = { x: 40, y: 92 }, P1 = { x: 180, y: -10 }, P2 = { x: 320, y: 92 };

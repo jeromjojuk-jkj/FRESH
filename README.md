@@ -1,4 +1,4 @@
-# NearBasket
+# KripFresh
 
 A mobile-first grocery delivery web app that connects customers with neighbourhood supermarkets **within 3.00 km**. It has three experiences in one installable PWA:
 

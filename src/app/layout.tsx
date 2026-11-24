@@ -7,11 +7,11 @@ import "./globals.css";
 import { RegisterSW } from "@/components/RegisterSW";
 
 export const metadata: Metadata = {
-  title: "NearBasket — groceries from your neighbourhood supermarket",
+  title: "KripFresh — groceries from your neighbourhood supermarket",
   description: "Order groceries from supermarkets within 3 km of you and track delivery live.",
   manifest: "/manifest.webmanifest",
-  applicationName: "NearBasket",
-  appleWebApp: { capable: true, title: "NearBasket", statusBarStyle: "default" },
+  applicationName: "KripFresh",
+  appleWebApp: { capable: true, title: "KripFresh", statusBarStyle: "default" },
   icons: { icon: [{ url: "/icons/icon-192.png", sizes: "192x192" }, { url: "/icons/icon.svg", type: "image/svg+xml" }], apple: "/icons/apple-touch-icon.png" },
 };
 

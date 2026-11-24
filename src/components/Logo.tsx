@@ -8,7 +8,7 @@ export function Logo({ className = "" }: { className?: string }) {
         <circle cx="31" cy="25" r="3.2" fill="#B7EDAA" />
         <circle cx="20" cy="18.6" r="2.4" fill="#fff" />
       </svg>
-      <span className="text-lg font-bold tracking-tight text-ink">Near<span className="text-brand">Basket</span></span>
+      <span className="text-lg font-bold tracking-tight text-ink">Krip<span className="text-brand">Fresh</span></span>
     </span>
   );
 }

@@ -32,7 +32,7 @@ class DemoGeocoder implements Geocoder {
 /** OpenStreetMap Nominatim. Respect their usage policy (1 req/s, contact address) or self-host. */
 class NominatimGeocoder implements Geocoder {
   private base = process.env.NOMINATIM_URL || "https://nominatim.openstreetmap.org";
-  private headers = { "User-Agent": `NearBasket/0.1 (${process.env.GEOCODER_CONTACT || "contact-not-set"})`, "Accept-Language": "en-IN" };
+  private headers = { "User-Agent": `KripFresh/0.1 (${process.env.GEOCODER_CONTACT || "contact-not-set"})`, "Accept-Language": "en-IN" };
   async reverse(p: LatLng) {
     const r = await fetch(`${this.base}/reverse?format=jsonv2&lat=${p.lat}&lon=${p.lng}`, { headers: this.headers, signal: AbortSignal.timeout(5000) });
     if (!r.ok) return null;

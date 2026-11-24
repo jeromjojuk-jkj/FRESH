@@ -49,7 +49,7 @@ export default function ImportPage() {
       <h1 className="text-xl font-bold">Import products</h1>
       <p className="text-sm text-ink-2">Upload a CSV or Excel (.xlsx) file with these columns: <strong className="text-ink">barcode, product name, category, pack size, selling price, stock quantity</strong>. You’ll see a preview before anything changes.</p>
       <Notice>Barcodes are kept exactly as written, including leading zeros (e.g. 0200000000011). In Excel, format the barcode column as <strong>Text</strong> before typing.</Notice>
-      <a href={`data:text/csv;charset=utf-8,${encodeURIComponent(TEMPLATE)}`} download="nearbasket-import-template.csv" className="inline-flex min-h-11 items-center font-semibold text-brand underline">Download a sample CSV</a>
+      <a href={`data:text/csv;charset=utf-8,${encodeURIComponent(TEMPLATE)}`} download="kripfresh-import-template.csv" className="inline-flex min-h-11 items-center font-semibold text-brand underline">Download a sample CSV</a>
 
       <label className="flex min-h-28 cursor-pointer flex-col items-center justify-center gap-2 rounded-[var(--radius-card)] border-2 border-dashed border-brand bg-mint/50 p-4 text-center hover:bg-mint">
         <IconUpload className="h-7 w-7 text-brand" />

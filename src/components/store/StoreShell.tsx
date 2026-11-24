@@ -18,7 +18,7 @@ export function StoreShell({ children }: { children: React.ReactNode }) {
   const prev = useRef(newCount);
 
   useEffect(() => {
-    document.title = newCount ? `(${newCount}) New orders · NearBasket Store` : "NearBasket Store";
+    document.title = newCount ? `(${newCount}) New orders · KripFresh Store` : "KripFresh Store";
     if (newCount > prev.current && "vibrate" in navigator) navigator.vibrate?.(200);
     prev.current = newCount;
   }, [newCount]);
