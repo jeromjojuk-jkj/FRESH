@@ -2,18 +2,33 @@
 
 @theme {
   --font-sans: "Poppins", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  --color-mint: #EAF8EC;
-  --color-fresh: #B7EDAA;
-  --color-brand: #17633A;
-  --color-brand-dark: #0E4A29;
-  --color-ink: #17251C;
-  --color-ink-2: #34443A;
-  --color-line: #D3E5D6;
+  /* Fresh-market palette: vivid green actions, soft green header gradient, pastel category tiles */
+  --color-mint: #EEF8EA;
+  --color-fresh: #CFF1C4;
+  --color-brand: #15843A;
+  --color-brand-dark: #0F6B2E;
+  --color-vivid: #2DBE5A;
+  --color-hero: #C9EEBE;
+  --color-hero-2: #EAF8E4;
+  --color-tile: #F5FAF3;
+  --color-ink: #142019;
+  --color-ink-2: #44544A;
+  --color-line: #E3EEE3;
+  --color-p1: #FFE8D2;
+  --color-p2: #FFF3C7;
+  --color-p3: #DDF5D2;
+  --color-p4: #FDE1EA;
+  --color-p5: #ECE4FB;
+  --color-p6: #DDEFFB;
+  --color-p7: #E2F6F0;
+  --color-heart: #D33A5A;
   --color-danger: #A3261B;
   --color-danger-bg: #FDECEA;
   --color-warn: #6E4500;
   --color-warn-bg: #FFF3D1;
-  --radius-card: 1.25rem;
+  --radius-card: 1.375rem;
+  --shadow-soft: 0 6px 22px -14px rgba(20, 60, 35, 0.35);
+  --shadow-lift: 0 10px 20px -8px rgba(21, 132, 58, 0.75);
 }
 
 html { -webkit-text-size-adjust: 100%; }
@@ -49,3 +64,6 @@ button:disabled { cursor: not-allowed; }
 
 .leaflet-container { font-family: var(--font-sans); background: var(--color-mint); }
 .nb-pin { background: transparent; border: 0; }
+
+/* Ribbon-shaped "Save" tag on product cards */
+.save-tag { clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 82%, 0 100%); }

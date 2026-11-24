@@ -68,9 +68,9 @@ function StockRow({ it }: { it: any }) {
           </div>
         </div>
         <label className="inline-flex min-h-12 cursor-pointer items-center gap-2 text-sm font-medium">
-          <input type="checkbox" checked={active} onChange={(e) => { setActive(e.target.checked); setState("idle"); }} className="h-5 w-5 accent-[#17633A]" /> Selling
+          <input type="checkbox" checked={active} onChange={(e) => { setActive(e.target.checked); setState("idle"); }} className="h-5 w-5 accent-[#15843A]" /> Selling
         </label>
-        <button onClick={save} disabled={!dirty || state === "saving"} className="ml-auto inline-flex min-h-12 items-center gap-1.5 rounded-xl bg-brand px-4 text-sm font-semibold text-white disabled:bg-[#9DB8A6]">
+        <button onClick={save} disabled={!dirty || state === "saving"} className="ml-auto inline-flex min-h-12 items-center gap-1.5 rounded-xl bg-brand px-4 text-sm font-semibold text-white disabled:bg-[#9CC7AA]">
           {state === "saving" ? "Saving…" : "Save"}
         </button>
       </div>

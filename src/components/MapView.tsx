@@ -22,8 +22,8 @@ const TILE = process.env.NEXT_PUBLIC_MAP_TILE_URL || "https://tile.openstreetmap
 const ATTR = process.env.NEXT_PUBLIC_MAP_ATTRIBUTION || "&copy; OpenStreetMap contributors";
 
 const pinHtml = (kind: Marker["kind"] | "drag", muted?: boolean) => {
-  const color = muted ? "#7A8A80" : "#17633A";
-  if (kind === "rider") return `<div style="width:30px;height:30px;border-radius:50%;background:#B7EDAA;border:3px solid ${color};box-shadow:0 0 0 6px rgba(183,237,170,.45)"></div>`;
+  const color = muted ? "#7A8A80" : "#15843A";
+  if (kind === "rider") return `<div style="width:30px;height:30px;border-radius:50%;background:#CFF1C4;border:3px solid ${color};box-shadow:0 0 0 6px rgba(183,237,170,.45)"></div>`;
   if (kind === "store") return `<div style="width:30px;height:30px;border-radius:10px;background:${color};color:#fff;display:grid;place-items:center;font:600 13px Poppins">S</div>`;
   return `<svg width="34" height="44" viewBox="0 0 34 44"><path d="M17 43s15-14 15-26A15 15 0 0 0 2 17c0 12 15 26 15 26Z" fill="${color}"/><circle cx="17" cy="17" r="6" fill="#fff"/></svg>`;
 };
@@ -66,8 +66,8 @@ export function MapView({ markers, route, draggablePin, className = "", label, o
     const pts: [number, number][] = [];
     if (route && route.length > 1) {
       const line = route.map((p) => [p.lat, p.lng] as [number, number]);
-      lf.polyline(line, { color: "#B7EDAA", weight: 7, opacity: 0.9 }).addTo(g);
-      lf.polyline(line, { color: "#17633A", weight: 2.5, dashArray: "6 8" }).addTo(g);
+      lf.polyline(line, { color: "#CFF1C4", weight: 7, opacity: 0.9 }).addTo(g);
+      lf.polyline(line, { color: "#15843A", weight: 2.5, dashArray: "6 8" }).addTo(g);
     }
     for (const mk of markers) {
       lf.marker([mk.pos.lat, mk.pos.lng], { icon: lf.divIcon({ className: "nb-pin", html: pinHtml(mk.kind, mk.muted), iconSize: mk.kind === "home" ? [34, 44] : [30, 30], iconAnchor: mk.kind === "home" ? [17, 43] : [15, 15] }), title: mk.label, alt: mk.label, keyboard: false })

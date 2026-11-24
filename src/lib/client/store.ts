@@ -63,3 +63,13 @@ export function setQty(storeId: string, productId: string, qty: number, snap?: O
 export function clearCart() {
   cart.set(() => ({ storeId: null, items: {}, updatedAt: Date.now() }));
 }
+
+/** Favourite products, kept on this device. */
+export const favs = persisted<{ ids: Record<string, 1> }>("kf.favs.v1", { ids: {} });
+export function toggleFav(id: string) {
+  favs.set((f) => {
+    const ids = { ...f.ids };
+    if (ids[id]) delete ids[id]; else ids[id] = 1;
+    return { ids };
+  });
+}

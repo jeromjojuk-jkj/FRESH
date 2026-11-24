@@ -6,7 +6,7 @@ type BtnProps = React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: "pri
 
 export function Button({ variant = "primary", size = "md", busy, className = "", children, disabled, ...rest }: BtnProps) {
   const v = {
-    primary: "bg-brand text-white hover:bg-brand-dark disabled:bg-[#9DB8A6]",
+    primary: "bg-brand text-white hover:bg-brand-dark disabled:bg-[#9CC7AA]",
     secondary: "bg-white text-brand border-2 border-brand hover:bg-mint disabled:opacity-50",
     ghost: "bg-transparent text-brand hover:bg-mint",
     danger: "bg-white text-danger border-2 border-danger hover:bg-danger-bg",

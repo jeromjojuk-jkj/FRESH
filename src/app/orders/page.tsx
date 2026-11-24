@@ -4,6 +4,7 @@ import { useApi, useNow } from "@/lib/client/hooks";
 import { ago } from "@/lib/format";
 import { rupees } from "@/lib/money";
 import { CustomerHeader } from "@/components/customer/Shell";
+import { BottomNav } from "@/components/customer/BottomNav";
 import { ErrorBox, Skeleton } from "@/components/ui";
 import { IconChevron } from "@/components/icons";
 
@@ -13,7 +14,7 @@ export default function OrdersPage() {
   return (
     <>
       <CustomerHeader back="/" title="Your orders" />
-      <main id="main" className="mx-auto max-w-2xl px-4 pb-16 pt-4">
+      <main id="main" className="mx-auto max-w-2xl px-4 pb-28 pt-4">
         {error ? <ErrorBox message={error.message} onRetry={reload} /> : !data ? <Skeleton className="h-40" /> : data.orders.length === 0 ? (
           <div className="rounded-2xl bg-mint p-8 text-center">
             <p className="font-semibold">No orders yet</p>
@@ -41,6 +42,7 @@ export default function OrdersPage() {
           </ul>
         )}
       </main>
+      <BottomNav />
     </>
   );
 }

@@ -8,7 +8,7 @@ import { Skeleton } from "../ui";
 export function StoreCard({ store, name }: { store: StoreSummary | null | undefined; name: string | null }) {
   if (!store) return <Skeleton className="h-[76px]" />;
   return (
-    <section className="flex items-center gap-3 rounded-[var(--radius-card)] border border-line bg-mint/60 p-3" aria-label="Selected supermarket">
+    <section className="flex items-center gap-3 rounded-[var(--radius-card)] border border-line bg-white p-3 shadow-[var(--shadow-soft)]" aria-label="Selected supermarket">
       <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-brand text-white"><IconStore /></span>
       <div className="min-w-0 flex-1">
         <p className="truncate text-[15px] font-semibold">{store.name ?? name}</p>
@@ -19,7 +19,7 @@ export function StoreCard({ store, name }: { store: StoreSummary | null | undefi
         </p>
         {!store.eligible ? <p className="mt-0.5 text-xs font-semibold text-danger">{store.reason}</p> : null}
       </div>
-      <Link href="/stores" className="inline-flex min-h-11 shrink-0 items-center rounded-xl border-2 border-brand bg-white px-3 text-sm font-semibold text-brand hover:bg-mint">Change store</Link>
+      <Link href="/stores" className="inline-flex min-h-11 shrink-0 items-center rounded-full border-2 border-brand bg-white px-3 text-sm font-semibold text-brand hover:bg-mint">Change store</Link>
     </section>
   );
 }

@@ -10,7 +10,7 @@ export function Welcome() {
         <Logo />
         <Link href="/demo" className="inline-flex min-h-10 items-center rounded-xl border border-dashed border-brand px-3 text-xs font-semibold uppercase tracking-wide text-brand">Demo switcher</Link>
       </div>
-      <section className="mt-8 rounded-[2rem] bg-mint px-4 pb-6 pt-8">
+      <section className="mt-8 rounded-[2rem] bg-gradient-to-b from-hero via-hero-2 to-white px-4 pb-6 pt-8">
         <RouteMotif className="mx-auto w-full max-w-sm" progress={0.5} />
         <h1 className="mt-4 text-center text-[26px] font-bold leading-tight">Groceries from your neighbourhood supermarket</h1>
         <p className="mx-auto mt-2 max-w-sm text-center text-[15px] text-ink-2">We only show stores within 3 km of you, with their own prices and stock. Track your order from shelf to doorstep.</p>

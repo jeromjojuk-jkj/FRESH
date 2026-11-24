@@ -1,10 +1,11 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { CatalogueProduct } from "@/lib/types";
 import { rupees } from "@/lib/money";
-import { cart, setQty } from "@/lib/client/store";
-import { Button, QtyStepper } from "../ui";
-import { IconPlus } from "../icons";
+import { api } from "@/lib/client/api";
+import { cart, favs, setQty, toggleFav } from "@/lib/client/store";
+import { Button, Sheet } from "../ui";
+import { IconHeart, IconMinus, IconPlus } from "../icons";
 
 export function groupVariants(products: CatalogueProduct[]): CatalogueProduct[][] {
   const map = new Map<string, CatalogueProduct[]>();
@@ -25,6 +26,40 @@ export function addToCart(storeId: string, p: Pick<CatalogueProduct, "productId"
   setQty(storeId, p.productId, Math.min(qty, p.stock), { name: p.name, packLabel: p.packLabel, image: p.image, price: p.price });
 }
 
+const savePct = (p: CatalogueProduct) => (p.mrp > p.price ? Math.round(((p.mrp - p.price) / p.mrp) * 100) : 0);
+
+function SaveTag({ p, className = "" }: { p: CatalogueProduct; className?: string }) {
+  const pct = savePct(p);
+  if (pct < 3 || !p.inStock) return null;
+  return (
+    <span className={`save-tag absolute left-2 top-0 z-[1] bg-fresh px-1.5 pb-2.5 pt-1.5 text-center text-[11px] font-bold leading-none text-brand-dark ${className}`}>
+      {pct}%<span className="block text-[10px] font-semibold">Save</span>
+    </span>
+  );
+}
+
+function FavButton({ p }: { p: CatalogueProduct }) {
+  const f = favs.use();
+  const on = !!f.ids[p.productId];
+  return (
+    <button type="button" onClick={() => toggleFav(p.productId)} aria-pressed={on} aria-label={`${on ? "Remove from" : "Add to"} favourites: ${p.name}`}
+      className={`absolute right-1.5 top-1.5 z-[1] grid h-11 w-11 place-items-center rounded-full bg-white/95 shadow-[var(--shadow-soft)] ${on ? "text-heart" : "text-ink-2"}`}>
+      <IconHeart className="h-5 w-5" filled={on} />
+    </button>
+  );
+}
+
+/** Pill-shaped stepper that sits where the round + button was. */
+export function MiniStepper({ qty, max, label, onChange }: { qty: number; max?: number; label: string; onChange: (n: number) => void }) {
+  return (
+    <div className="flex h-11 shrink-0 items-center rounded-full bg-brand text-white" role="group" aria-label={`Quantity of ${label}`}>
+      <button type="button" onClick={() => onChange(qty - 1)} className="grid h-11 w-10 place-items-center rounded-l-full hover:bg-brand-dark" aria-label={qty === 1 ? `Remove ${label}` : `Decrease ${label}`}><IconMinus className="h-4 w-4" /></button>
+      <output className="min-w-5 text-center text-sm font-bold" aria-live="polite">{qty}</output>
+      <button type="button" onClick={() => onChange(qty + 1)} disabled={max !== undefined && qty >= max} className="grid h-11 w-10 place-items-center rounded-r-full hover:bg-brand-dark disabled:opacity-40" aria-label={`Increase ${label}`}><IconPlus className="h-4 w-4" /></button>
+    </div>
+  );
+}
+
 export function ProductCard({ variants, storeId }: { variants: CatalogueProduct[]; storeId: string }) {
   const c = cart.use();
   const inCart = (id: string) => (c.storeId === storeId ? c.items[id]?.qty ?? 0 : 0);
@@ -34,19 +69,21 @@ export function ProductCard({ variants, storeId }: { variants: CatalogueProduct[
     [variants],
   );
   const [selId, setSelId] = useState(initial.productId);
+  const [detail, setDetail] = useState(false);
   const p = variants.find((v) => v.productId === selId) ?? variants[0];
   const qty = inCart(p.productId);
-  const off = p.mrp > p.price ? Math.round(((p.mrp - p.price) / p.mrp) * 100) : 0;
   const label = `${p.name}, ${p.packLabel}`;
 
   return (
-    <article className="relative flex h-full flex-col rounded-[var(--radius-card)] border border-line bg-white p-3 transition-shadow hover:shadow-[0_6px_24px_-12px_rgba(23,99,58,.35)]" aria-label={label}>
-      <div className={`relative mb-2 grid aspect-square place-items-center rounded-2xl bg-mint ${p.inStock ? "" : "opacity-60 grayscale"}`}>
+    <article className="relative flex h-full flex-col rounded-[var(--radius-card)] border border-line bg-white p-2.5 shadow-[var(--shadow-soft)]" aria-label={label}>
+      <SaveTag p={p} />
+      <FavButton p={p} />
+      <button type="button" onClick={() => setDetail(true)} aria-label={`Details for ${label}`}
+        className={`relative mb-2 grid aspect-square w-full place-items-center rounded-2xl bg-tile ${p.inStock ? "" : "opacity-60 grayscale"}`}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={p.image} alt="" width={256} height={256} loading="lazy" decoding="async" className="h-[70%] w-[70%] object-contain drop-shadow-sm" />
-        {off >= 5 && p.inStock ? <span className="absolute left-2 top-2 rounded-lg bg-brand px-1.5 py-0.5 text-[11px] font-semibold text-white">{off}% off</span> : null}
+        <img src={p.image} alt="" width={256} height={256} loading="lazy" decoding="async" className="h-[66%] w-[66%] object-contain drop-shadow-sm" />
         {!p.inStock ? <span className="absolute inset-x-2 bottom-2 rounded-lg bg-white/95 py-1 text-center text-xs font-semibold text-ink">Out of stock</span> : null}
-      </div>
+      </button>
 
       {variants.length > 1 ? (
         <div className="mb-1.5 flex flex-wrap gap-1.5" role="radiogroup" aria-label={`Pack size for ${p.name}`}>
@@ -55,7 +92,7 @@ export function ProductCard({ variants, storeId }: { variants: CatalogueProduct[
             const n = inCart(v.productId);
             return (
               <button key={v.productId} type="button" role="radio" aria-checked={on} onClick={() => setSelId(v.productId)}
-                className={`min-h-9 rounded-lg border-2 px-2.5 text-[13px] font-semibold ${on ? "border-brand bg-fresh/60 text-ink" : "border-line bg-white text-ink-2 hover:border-brand"}`}>
+                className={`min-h-9 rounded-lg border-2 px-2.5 text-[13px] font-semibold ${on ? "border-brand bg-fresh text-ink" : "border-line bg-white text-ink-2 hover:border-brand"}`}>
                 {v.packLabel}{n ? ` · ${n} in cart` : ""}
               </button>
             );
@@ -65,27 +102,118 @@ export function ProductCard({ variants, storeId }: { variants: CatalogueProduct[
         <span className="mb-1.5 inline-flex w-fit rounded-lg bg-mint px-2 py-0.5 text-[13px] font-semibold text-ink">{p.packLabel}</span>
       )}
 
-      <h3 className="line-clamp-2 min-h-[2.5rem] text-sm font-medium leading-5 text-ink">{p.name}</h3>
-      {p.brand ? <p className="truncate text-xs text-ink-2">{p.brand}</p> : null}
+      <h3 className="line-clamp-2 text-[13.5px] font-semibold leading-5 text-ink">{p.name}</h3>
+      <p className="truncate text-[11.5px] text-ink-2">{p.brand ? `${p.brand} · ` : ""}{p.packLabel}</p>
 
-      <div className="mt-auto pt-2">
-        <div className="mb-2 flex items-baseline gap-1.5">
-          <span className="text-base font-bold text-ink">{rupees(p.price)}</span>
-          {p.mrp > p.price ? <span className="text-xs text-ink-2 line-through"><span className="sr-only">MRP </span>{rupees(p.mrp)}</span> : null}
-          <span className="ml-auto truncate text-[11px] font-semibold text-ink-2">/ {p.packLabel}</span>
-        </div>
+      <div className="mt-auto flex items-end gap-2 pt-2">
+        <span className="min-w-0 flex-1 leading-tight">
+          <span className="block text-[17px] font-bold text-ink">{rupees(p.price)}</span>
+          {p.mrp > p.price ? <span className="text-[11.5px] text-ink-2 line-through"><span className="sr-only">MRP </span>{rupees(p.mrp)}</span> : <span className="text-[11px] font-semibold text-brand">MRP price</span>}
+        </span>
         {!p.inStock ? (
-          <Button variant="secondary" disabled className="h-11 min-h-11 w-full">Out of stock</Button>
+          <span className="pb-2 text-xs font-semibold text-ink-2">Sold out</span>
         ) : qty > 0 ? (
-          <QtyStepper qty={qty} max={p.stock} label={label} onChange={(n) => addToCart(storeId, p, n)} />
+          <MiniStepper qty={qty} max={p.stock} label={label} onChange={(n) => addToCart(storeId, p, n)} />
         ) : (
-          <Button className="h-11 min-h-11 w-full" onClick={() => addToCart(storeId, p, 1)} aria-label={`Add ${label} to cart`}>
-            <IconPlus className="h-5 w-5" /> Add
-          </Button>
+          <button type="button" onClick={() => addToCart(storeId, p, 1)} aria-label={`Add ${label} to cart`}
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-brand text-white shadow-[var(--shadow-lift)] hover:bg-brand-dark">
+            <IconPlus className="h-5 w-5" />
+          </button>
         )}
-        {p.inStock && p.stock <= 5 ? <p className="mt-1 text-center text-[11px] font-semibold text-warn">Only {p.stock} left</p> : null}
       </div>
+      {p.inStock && p.stock <= 5 ? <p className="mt-1 text-[11px] font-semibold text-warn">Only {p.stock} left</p> : null}
+
+      <ProductSheet open={detail} onClose={() => setDetail(false)} storeId={storeId} variants={variants} selectedId={p.productId} onSelect={setSelId} />
     </article>
+  );
+}
+
+const CATEGORY_NOTE: Record<string, string> = {
+  "fruits-vegetables": "Fresh produce is checked by the store when packing. If it doesn’t look right, staff follow your choice at checkout: contact you, or remove it.",
+  "dairy-eggs": "Kept chilled at the store and packed last, so it reaches you cold.",
+  "rice-grains": "Sealed pack. Check the best-before date printed on the pack.",
+  snacks: "Sealed pack from the store’s shelf.",
+  drinks: "Sealed bottle or carton, chilled where the store has it in the fridge.",
+  household: "Sold in the manufacturer’s pack.",
+  "personal-care": "Sold sealed in the manufacturer’s pack.",
+};
+
+/** Product detail: big image, pack sizes, details, picks from the same store, quantity + add. */
+function ProductSheet({ open, onClose, storeId, variants, selectedId, onSelect }: {
+  open: boolean; onClose: () => void; storeId: string; variants: CatalogueProduct[]; selectedId: string; onSelect: (id: string) => void;
+}) {
+  const c = cart.use();
+  const p = variants.find((v) => v.productId === selectedId) ?? variants[0];
+  const inCart = c.storeId === storeId ? c.items[p.productId]?.qty ?? 0 : 0;
+  const [want, setWant] = useState(1);
+  const [picks, setPicks] = useState<CatalogueProduct[]>([]);
+  useEffect(() => { if (open) setWant(inCart || 1); }, [open, p.productId]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!open) return;
+    api<{ products: CatalogueProduct[] }>(`/stores/${storeId}/products?category=${p.category}`)
+      .then((r) => setPicks(r.products.filter((x) => x.groupKey !== p.groupKey && x.inStock).slice(0, 2)))
+      .catch(() => setPicks([]));
+  }, [open, storeId, p.category, p.groupKey]);
+  const pct = savePct(p);
+  return (
+    <Sheet open={open} onClose={onClose} title="Product details">
+      <div className="space-y-4">
+        <div className="relative grid aspect-[16/10] place-items-center rounded-3xl bg-tile">
+          <SaveTag p={p} className="left-3" />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={p.image} alt="" className="h-[76%] w-auto max-w-[62%] object-contain drop-shadow" />
+        </div>
+        <div>
+          <h3 className="text-xl font-semibold">{p.name}</h3>
+          <p className="mt-1 flex flex-wrap items-center gap-2">
+            <span className="text-2xl font-bold">{rupees(p.price)}</span>
+            {p.mrp > p.price ? <span className="text-sm text-ink-2 line-through">{rupees(p.mrp)}</span> : null}
+            {pct >= 3 ? <span className="rounded-full bg-fresh px-2 py-0.5 text-xs font-semibold text-brand-dark">{pct}% off MRP</span> : null}
+            <span className="rounded-full bg-tile px-2 py-0.5 text-sm font-semibold">{p.packLabel}</span>
+          </p>
+        </div>
+        {variants.length > 1 ? (
+          <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Pack size">
+            {variants.map((v) => (
+              <button key={v.productId} type="button" role="radio" aria-checked={v.productId === p.productId} onClick={() => onSelect(v.productId)}
+                className={`min-h-11 rounded-xl border-2 px-3 text-sm font-semibold ${v.productId === p.productId ? "border-brand bg-fresh" : "border-line"}`}>
+                {v.packLabel} · {rupees(v.price)}
+              </button>
+            ))}
+          </div>
+        ) : null}
+        <div>
+          <h4 className="mb-1 text-sm font-semibold">More details</h4>
+          <p className="text-sm text-ink-2">{p.brand ? `${p.brand} · ` : ""}{p.packLabel}. {p.inStock ? `${p.stock} in stock at this store.` : "Out of stock at this store right now."} {CATEGORY_NOTE[p.category] ?? ""}</p>
+        </div>
+        {picks.length ? (
+          <div>
+            <h4 className="mb-2 text-sm font-semibold">Picks for you</h4>
+            <ul className="grid grid-cols-2 gap-2">
+              {picks.map((x) => (
+                <li key={x.productId} className="flex items-center gap-2 rounded-2xl border border-line p-2 shadow-[var(--shadow-soft)]">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={x.image} alt="" className="h-10 w-10 shrink-0 object-contain" />
+                  <span className="min-w-0 flex-1 text-xs"><b className="block truncate">{x.name}</b>{x.packLabel} · {rupees(x.price)}</span>
+                  <button type="button" onClick={() => addToCart(storeId, x, (c.storeId === storeId ? c.items[x.productId]?.qty ?? 0 : 0) + 1)} aria-label={`Add ${x.name}, ${x.packLabel} to cart`}
+                    className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-brand text-white"><IconPlus className="h-4 w-4" /></button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+        <div className="sticky bottom-0 -mx-1 flex items-center gap-3 bg-white px-1 pt-2">
+          {p.inStock ? (
+            <>
+              <MiniStepper qty={want} max={p.stock} label={`${p.name} to add`} onChange={(n) => setWant(Math.max(1, n))} />
+              <Button size="lg" className="flex-1 rounded-full" onClick={() => { addToCart(storeId, p, want); onClose(); }}>
+                {inCart ? "Update cart" : "Add item"} · {rupees(p.price * want)}
+              </Button>
+            </>
+          ) : <Button size="lg" className="w-full" disabled>Out of stock</Button>}
+        </div>
+      </div>
+    </Sheet>
   );
 }
 
@@ -101,7 +229,7 @@ export function ProductGrid({ products, storeId }: { products: CatalogueProduct[
 export function ProductRow({ products, storeId }: { products: CatalogueProduct[]; storeId: string }) {
   const groups = groupVariants(products);
   return (
-    <div className="no-scrollbar relative -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1 md:mx-0 md:grid md:grid-cols-4 md:overflow-visible md:px-0 xl:grid-cols-5">
+    <div className="no-scrollbar relative -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2 pt-1 md:mx-0 md:grid md:grid-cols-4 md:overflow-visible md:px-0 xl:grid-cols-5">
       {groups.map((g) => (
         <div key={g.map((x) => x.productId).join()} className="w-[46%] shrink-0 snap-start sm:w-[31%] md:w-auto">
           <ProductCard variants={g} storeId={storeId} />
