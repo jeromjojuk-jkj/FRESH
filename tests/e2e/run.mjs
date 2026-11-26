@@ -187,7 +187,7 @@ await check("Order flows checkout → store packing → rider pickup → deliver
   await rctx.request.post(BASE + "/api/v1/demo/session", { data: { role: "rider", id: riderId } });
   const rp = await rctx.newPage();
   await rp.goto(BASE + "/rider");
-  await rp.getByTestId(`pickup-${code}`).click();
+  await rp.getByTestId(`pickup-${code}`).press("Enter"); // slide-to-confirm; Enter is the keyboard path
   await rp.getByTestId(`deliver-${code}`).waitFor();
   await rp.screenshot({ path: `${SHOTS}/rider-360.png`, fullPage: true });
   assert(await noHScroll(rp), "rider page scrolls horizontally at 360px");
@@ -201,7 +201,7 @@ await check("Order flows checkout → store packing → rider pickup → deliver
   await cust.getByText(/Rider location updated|Map couldn’t load/).first().waitFor({ timeout: 15000 });
   journey.mapState = (await cust.getByText("Map couldn’t load.").count()) ? "map tiles unreachable → text fallback shown" : "map shown";
   await cust.screenshot({ path: `${SHOTS}/track-live-360.png`, fullPage: true });
-  await rp.getByTestId(`deliver-${code}`).click();
+  await rp.getByTestId(`deliver-${code}`).press("Enter");
   await cust.locator('[aria-current="step"]', { hasText: "Delivered" }).waitFor({ timeout: 10000 });
   await cust.getByText(/^Delivered$/).first().waitFor();
   await cust.screenshot({ path: `${SHOTS}/track-delivered-360.png`, fullPage: true });

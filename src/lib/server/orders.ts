@@ -431,7 +431,7 @@ export async function listRiderDeliveries(riderId: string) {
   const { rows } = await query(
     `SELECT o.code, o.status, o.address, o.lat, o.lng, o.total, o.payment_method AS "paymentMethod", o.payment_status AS "paymentStatus",
        s.name AS "storeName", s.address AS "storeAddress", s.lat AS "storeLat", s.lng AS "storeLng", s.phone AS "storePhone",
-       c.name AS "customerName", c.phone AS "customerPhone",
+       c.name AS "customerName", c.phone AS "customerPhone", o.distance_m AS "distanceM", o.delivered_at AS "deliveredAt",
        (SELECT sum(qty - removed_qty)::int FROM order_items WHERE order_id=o.id) AS "itemCount"
      FROM orders o JOIN stores s ON s.id=o.store_id JOIN customers c ON c.id=o.customer_id
      WHERE o.rider_id=$1 AND (o.status IN ('accepted','packing','ready','out_for_delivery') OR (o.status='delivered' AND o.delivered_at > now() - interval '12 hours'))
