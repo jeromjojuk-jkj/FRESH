@@ -1,0 +1,84 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Poppins", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  /* Fresh-market palette: vivid green actions, soft green header gradient, pastel category tiles */
+  --color-mint: #ECFBEF;
+  --color-fresh: #D6F5DC;
+  --color-brand: #22B24C;
+  --color-brand-dark: #1C9A41;
+  --color-brand-text: #128A3B;
+  --color-vivid: #3FCB63;
+  --color-hero: #FFF0B8;
+  --color-hero-2: #FFF9E3;
+  --color-tile: #F6F8FA;
+  --color-page: #F4F6F9;
+  --color-deal: #2F6FDB;
+  --color-cat: #EEF6FB;
+  --color-ink: #1C1C1C;
+  --color-ink-2: #5E6368;
+  --color-line: #E6E8EB;
+  --color-p1: #FFE8D2;
+  --color-p2: #FFF3C7;
+  --color-p3: #DDF5D2;
+  --color-p4: #FDE1EA;
+  --color-p5: #ECE4FB;
+  --color-p6: #DDEFFB;
+  --color-p7: #E2F6F0;
+  --color-heart: #D33A5A;
+  --color-offbg: #D8F1DE;
+  --color-t0: #FFF4D6;
+  --color-t1: #E3F6EC;
+  --color-t2: #FDE6EE;
+  --color-t3: #E4F0FB;
+  --color-t4: #FFEADB;
+  --color-head: #DDF4E1;
+  --color-head-2: #EEF9F0;
+  --color-danger: #A3261B;
+  --color-danger-bg: #FDECEA;
+  --color-warn: #6E4500;
+  --color-warn-bg: #FFF3D1;
+  --radius-card: 1.375rem;
+  --shadow-soft: 0 6px 22px -14px rgba(20, 60, 35, 0.35);
+  --shadow-lift: 0 8px 20px -10px rgba(0, 0, 0, 0.45);
+}
+
+html { -webkit-text-size-adjust: 100%; }
+body {
+  background: #FFFFFF;
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+:focus-visible {
+  outline: 3px solid var(--color-brand-text);
+  outline-offset: 2px;
+  border-radius: 10px;
+}
+button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
+button:disabled { cursor: not-allowed; }
+
+/* Thin green delivery-route motif */
+@keyframes route-dash { to { stroke-dashoffset: -40; } }
+.route-flow { stroke-dasharray: 6 8; animation: route-dash 1.6s linear infinite; }
+@keyframes pulse-ring { 0% { transform: scale(.6); opacity: .7 } 100% { transform: scale(2.2); opacity: 0 } }
+.pulse-ring { transform-origin: center; transform-box: fill-box; animation: pulse-ring 1.8s ease-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .route-flow, .pulse-ring { animation: none; }
+  * { transition-duration: 0ms !important; }
+}
+
+.fade-in { animation: fade-in .2s ease-out; }
+@keyframes fade-in { from { opacity: 0; transform: translateY(4px) } to { opacity: 1; transform: none } }
+
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { scrollbar-width: none; }
+
+.leaflet-container { font-family: var(--font-sans); background: var(--color-mint); }
+.nb-pin { background: transparent; border: 0; }
+
+/* Ribbon-shaped "Save" tag on product cards */
+.save-tag { clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 82%, 0 100%); }
+
+/* The bright green is for fills; green text on white uses a deeper shade so it stays readable. */
+.text-brand { color: var(--color-brand-text); }
