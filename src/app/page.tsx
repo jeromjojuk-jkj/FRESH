@@ -44,7 +44,7 @@ function Storefront({ storeId }: { storeId: string }) {
 
   return (
     <div className="space-y-6">
-      <header className="-mx-4 -mt-4 space-y-4 bg-gradient-to-b from-head via-head-2 to-white px-4 pb-1 pt-3.5 lg:mx-0 lg:mt-0 lg:rounded-3xl lg:p-5">
+      <header className="-mx-4 -mt-4 space-y-4 bg-gradient-to-b from-head via-head-2 to-white px-4 pb-1 pt-3.5 lg:hidden">
         <div className="flex items-center gap-2.5">
           <Link href="/" aria-label="KripFresh home" className="grid h-[52px] w-[52px] shrink-0 place-items-center rounded-full bg-white shadow-[var(--shadow-soft)]"><LogoMark /></Link>
           <div className="min-w-0 flex-1">

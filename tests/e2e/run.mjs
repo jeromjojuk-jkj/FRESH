@@ -225,7 +225,7 @@ await check("Main shopping and supplier screens work at 360 px and desktop (no s
     const p = await ctx.newPage();
     await onboard(p);
     await p.getByRole("button", { name: /^Add .* to cart$/ }).first().click();
-    for (const path of ["/", "/category/dairy-eggs", "/search?q=milk", "/cart", "/stores", "/orders"]) {
+    for (const path of ["/", "/category/dairy-eggs", "/search?q=milk", "/product/milk-toned-500", "/cart", "/stores", "/orders"]) {
       await p.goto(BASE + path); await p.waitForTimeout(700);
       if (!(await noHScroll(p))) bad.push(`${path}@${w}`);
       await p.screenshot({ path: `${SHOTS}/${path.replace(/[/?=]/g, "_") || "home"}-${w}.png` });
@@ -240,14 +240,16 @@ await check("Main shopping and supplier screens work at 360 px and desktop (no s
       await p.goto(BASE + "/demo");
       await ctx.request.post(BASE + "/api/v1/demo/session", { data: { role: "customer", id: "cust-asha" } });
       await p.goto(BASE + "/"); await p.waitForTimeout(800);
-      const sidebar = await p.getByRole("complementary", { name: "Your cart" }).isVisible();
-      if (!sidebar) bad.push("desktop cart summary hidden");
+      // Desktop is a full website: header with search, category menu and a cart button.
+      const cartBtn = await p.getByRole("link", { name: /^Cart, \d+ items/ }).isVisible();
+      const menu = await p.getByRole("navigation", { name: "Shop by category" }).isVisible();
+      if (!cartBtn || !menu) bad.push("desktop site header missing");
       await p.screenshot({ path: `${SHOTS}/home-desktop-asha.png` });
     }
     await ctx.close();
   }
   assert(!bad.length, `overflow/problems: ${bad.join(", ")}`);
-  return "16 screens × 2 widths";
+  return "17 screens × 2 widths";
 });
 
 // Extra ─ CSV import keeps leading zeros

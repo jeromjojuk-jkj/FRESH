@@ -75,3 +75,16 @@ export async function alternatives(q: Q, storeId: string, productId: string): Pr
   );
   return rows;
 }
+
+/** One product page: the product, its other pack sizes and similar items, all at this store. */
+export async function productDetail(q: Q, storeId: string, productId: string) {
+  const { rows } = await q<CatalogueProduct>(`${SELECT} AND p.id=$2`, [storeId, productId]);
+  const product = rows[0] ?? null;
+  if (!product) return { product: null, variants: [], similar: [] };
+  const { rows: variants } = await q<CatalogueProduct>(`${SELECT} AND p.group_key=$2 ORDER BY sp.price`, [storeId, product.groupKey]);
+  const { rows: similar } = await q<CatalogueProduct>(
+    `${SELECT} AND p.category=$2 AND p.group_key<>$3 ORDER BY (sp.stock>0) DESC, p.popular DESC, p.name LIMIT 10`,
+    [storeId, product.category, product.groupKey],
+  );
+  return { product, variants, similar };
+}

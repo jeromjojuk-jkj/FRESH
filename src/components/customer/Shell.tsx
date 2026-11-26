@@ -4,13 +4,17 @@ import { setup } from "@/lib/client/store";
 import { useHydrated } from "@/lib/client/hooks";
 import { IconBack, IconEdit, IconList, IconPin } from "../icons";
 import { Logo } from "../Logo";
+import { SiteHeader } from "./SiteChrome";
 
-export function CustomerHeader({ back, title }: { back?: string; title?: string }) {
+export function CustomerHeader({ back, title, site = true }: { back?: string; title?: string; site?: boolean }) {
   const s = setup.use();
   const hydrated = useHydrated();
   const a = hydrated ? s.address : null;
+  const showSite = site && hydrated && !!s.address && !!s.storeId;
   return (
-    <header className={`sticky top-0 z-30 ${title ? "border-b border-line/70 bg-white/95 backdrop-blur" : "bg-hero"}`}>
+    <>
+    {showSite ? <SiteHeader /> : null}
+    <header className={`${showSite ? "lg:hidden " : ""}sticky top-0 z-30 ${title ? "border-b border-line/70 bg-white/95 backdrop-blur" : "bg-hero"}`}>
       <div className="mx-auto flex max-w-6xl items-center gap-2 px-4 py-2.5">
         {back ? (
           <Link href={back} className="-ml-2 grid h-11 w-11 shrink-0 place-items-center rounded-full hover:bg-mint" aria-label="Back"><IconBack /></Link>
@@ -33,6 +37,7 @@ export function CustomerHeader({ back, title }: { back?: string; title?: string 
         <Link href="/demo" className="hidden min-h-11 shrink-0 items-center rounded-xl border border-dashed border-brand px-2.5 text-xs font-semibold uppercase tracking-wide text-brand hover:bg-mint sm:inline-flex">Demo switcher</Link>
       </div>
     </header>
+    </>
   );
 }
 
