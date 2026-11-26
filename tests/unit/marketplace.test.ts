@@ -1,0 +1,215 @@
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { buildSeedProducts } from "../../src/data/catalog.ts";
+import { computeQuote } from "../../src/lib/pricing.ts";
+import type { Order, ProductPublic, Settings } from "../../src/lib/types.ts";
+import { normalizeCoupon } from "../../src/lib/coupons.ts";
+import { DEFAULT_DELIVERY } from "../../src/lib/pincode.ts";
+import { addWorkingDays, DEFAULT_COMMISSION, describeCommission, noCommission, unitCommission, validateCommission, validateShipping, vendorShares } from "../../src/lib/vendorPlans.ts";
+import { applyVendorOp, allowedVendorOps, FulfilmentError } from "../../src/lib/vendorFulfilment.ts";
+import { validateRegistration, validateVendorProduct } from "../../src/lib/vendorInput.ts";
+import { vendorLedger, type WalletSource } from "../../src/lib/vendorWallet.ts";
+
+const PCT = { upTo: 100, lowPct: 1, highPct: 2 };
+const base = buildSeedProducts("fashion").map(({ private: _p, ...pub }) => pub);
+const kripP = base.find((p) => p.status === "active" && p.price >= 300 && p.variants[0].stock > 2)!;
+const sellerP: ProductPublic = { ...base.find((p) => p.status === "active" && p.id !== kripP.id && p.variants[0].stock > 2)!, vendorId: "VND-AAAAAA", price: 400 };
+const products = [kripP, sellerP];
+const settings: Settings = {
+  deliveryFee: 49, freeDeliveryAbove: null, codFee: 20, codMaxOrderValue: 3000, returnAllowancePct: 8,
+  channelFees: [{ channel: "Krip", marketplaceFeePct: 0, paymentFeePct: 2, fixedFee: 0 }],
+  coupons: [normalizeCoupon({ code: "FLAT50", description: "x", amountOff: 50, minSubtotal: 1, active: true })],
+  delivery: DEFAULT_DELIVERY,
+};
+const vendorShipping = { "VND-AAAAAA": { name: "Asha Stores", fee: 40, freeAbove: 1000 } };
+const k = (qty = 1) => ({ sku: kripP.variants[0].sku, qty });
+const sv = (qty = 1) => ({ sku: sellerP.variants[0].sku, qty });
+
+test("each seller's delivery charge is added separately from Krip's", () => {
+  const q = computeQuote({ items: [k(), sv()], pincode: "560001" }, products, settings, {}, { vendorShipping });
+  assert.deepEqual(q.deliveryParts.map((d) => [d.vendorId, d.amount]), [[null, 49], ["VND-AAAAAA", 40]]);
+  assert.equal(q.delivery, 89);
+  assert.equal(q.total, q.subtotal + 89);
+  const free = computeQuote({ items: [sv(3)] }, products, settings, {}, { vendorShipping });
+  assert.equal(free.delivery, 0, "seller's free-delivery threshold");
+  assert.equal(free.deliveryParts.length, 1);
+});
+
+test("coupons apply to Krip's items only; seller-only bags get no Krip discount", () => {
+  const mixed = computeQuote({ items: [k(), sv()], couponCode: "FLAT50" }, products, settings, {}, { vendorShipping });
+  assert.equal(mixed.discount, 50);
+  const only = computeQuote({ items: [sv()], couponCode: "FLAT50" }, products, settings, {}, { vendorShipping });
+  assert.equal(only.discount, 0);
+  assert.match(only.couponMessage!, /sold by Krip/);
+});
+
+test("Cash on Delivery is off when the bag has a seller's item", () => {
+  const q = computeQuote({ items: [k(), sv()], pincode: "560001", paymentMethod: "cod" }, products, settings, {}, { vendorShipping });
+  assert.equal(q.codAvailable, false);
+  assert.equal(q.codFee, 0);
+  assert.equal(computeQuote({ items: [k()], pincode: "560001", paymentMethod: "cod" }, products, settings).codAvailable, true);
+});
+
+test("default: no commission, sellers get the whole sale", () => {
+  assert.ok(noCommission(DEFAULT_COMMISSION));
+  assert.equal(unitCommission(499, DEFAULT_COMMISSION), 0);
+  assert.equal(describeCommission(DEFAULT_COMMISSION), "no commission");
+  const o = { items: [{ vendorId: "V1", unitPrice: 349, qty: 2 }], vendorParts: [{ vendorId: "V1", delivery: 30 }] } as unknown as Order;
+  assert.equal(vendorShares(o, DEFAULT_COMMISSION).get("V1")!.payout, 728);
+});
+
+test("optional % commission: 1% on products up to ₹100, 2% above ₹100, to the paisa", () => {
+  assert.equal(unitCommission(49, PCT), 0.49);
+  assert.equal(unitCommission(100, PCT), 1);
+  assert.equal(unitCommission(101, PCT), 2.02);
+  assert.equal(unitCommission(499, PCT), 9.98);
+  assert.equal(describeCommission(PCT), "1% on products up to ₹100, 2% above ₹100");
+  assert.equal(unitCommission(499, 10), 10, "older orders keep the flat ₹10");
+});
+
+test("seller payout = items + their delivery charge − commission", () => {
+  const o = { items: [{ vendorId: "V1", unitPrice: 499, qty: 3 }, { vendorId: "V1", unitPrice: 80, qty: 2 }, { vendorId: null, unitPrice: 200, qty: 1 }], vendorParts: [{ vendorId: "V1", delivery: 40 }] } as unknown as Order;
+  const s = vendorShares(o, PCT).get("V1")!;
+  // 3 × 9.98 + 2 × 0.80 = 31.54
+  assert.deepEqual(s, { items: 1657, units: 5, delivery: 40, commission: 31.54, payout: 1665.46 });
+  assert.equal(vendorShares(o, PCT).size, 1);
+});
+
+test("commission settings are validated", () => {
+  assert.deepEqual(validateCommission({ upTo: "100", lowPct: "1", highPct: "2.5" }), { ok: true, value: { upTo: 100, lowPct: 1, highPct: 2.5 } });
+  assert.equal(validateCommission({ upTo: "100", lowPct: "1.1", highPct: "2.3" }).ok, true);
+  assert.equal(validateCommission({ upTo: "100", lowPct: "1.25", highPct: "2" }).ok, false);
+  assert.equal(validateCommission({ upTo: "0", lowPct: "1", highPct: "2" }).ok, false);
+});
+
+test("dispatch deadline skips Sundays (IST)", () => {
+  // Sat 14 Nov 2026, 10:00 IST + 2 working days → Tue 17 Nov.
+  const d = addWorkingDays(new Date("2026-11-14T04:30:00Z"), 2);
+  assert.equal(d.toISOString().slice(0, 10), "2026-11-17");
+});
+
+test("shipping settings are validated", () => {
+  assert.equal(validateShipping({ fee: "49", freeAbove: "", handlingDays: "2" }).ok, true);
+  const bad = validateShipping({ fee: "-1", freeAbove: "abc", handlingDays: "9" });
+  assert.equal(bad.ok, false);
+  if (!bad.ok) assert.deepEqual(Object.keys(bad.errors).sort(), ["fee", "freeAbove", "handlingDays"]);
+});
+
+function sellerOrder(): Order {
+  return {
+    id: "KRP-1", status: "placed", statusHistory: [], items: [{ vendorId: "V1", sku: "A", qty: 1, unitPrice: 300 }],
+    vendorParts: [{ vendorId: "V1", status: "new", delivery: 0, dispatchBy: new Date(Date.now() + 86400_000).toISOString(), history: [], shipmentId: null }],
+  } as unknown as Order;
+}
+
+test("seller moves their part step by step; a seller-only order follows it", () => {
+  const o = sellerOrder();
+  assert.throws(() => applyVendorOp(o, "V1", "ship", { carrier: "DTDC", awb: "D123456" }, "s"), FulfilmentError, "can't skip steps");
+  applyVendorOp(o, "V1", "accept", {}, "s");
+  assert.equal(o.status, "confirmed");
+  applyVendorOp(o, "V1", "pack", {}, "s");
+  assert.equal(o.status, "packed");
+  assert.throws(() => applyVendorOp(o, "V1", "ship", { carrier: "DTDC", awb: "x" }, "s"), /AWB/);
+  assert.throws(() => applyVendorOp(o, "V1", "ship", { carrier: "DTDC", awb: "D123456", trackingUrl: "http://x.y" }, "s"), /https/);
+  applyVendorOp(o, "V1", "ship", { carrier: "DTDC", awb: "D123456" }, "s");
+  assert.equal(o.status, "shipped");
+  assert.equal(o.shipments!.length, 1);
+  assert.equal(o.shipments![0].vendorId, "V1");
+  applyVendorOp(o, "V1", "tracking", { update: "Out for delivery" }, "s");
+  assert.equal(o.shipments![0].events.at(-1)!.status, "Out for delivery");
+  applyVendorOp(o, "V1", "deliver", {}, "s");
+  assert.equal(o.status, "delivered");
+  assert.deepEqual(allowedVendorOps(o, o.vendorParts![0]), []);
+});
+
+test("another seller can't touch the order; a mixed order's status stays with Krip", () => {
+  const o = sellerOrder();
+  assert.throws(() => applyVendorOp(o, "V2", "accept", {}, "s"), /none of your items/);
+  o.items.push({ vendorId: null, sku: "K", qty: 1, unitPrice: 100 } as Order["items"][number]);
+  applyVendorOp(o, "V1", "accept", {}, "s");
+  assert.equal(o.status, "placed");
+});
+
+test("unpaid, cancelled or held orders can't be updated by the seller", () => {
+  for (const patch of [{ status: "payment_pending" }, { status: "cancelled" }, { onHold: true }]) {
+    const o = Object.assign(sellerOrder(), patch);
+    assert.throws(() => applyVendorOp(o, "V1", "accept", {}, "s"), FulfilmentError);
+  }
+});
+
+test("can't-ship report needs a reason and leaves a note for Krip", () => {
+  const o = sellerOrder();
+  assert.throws(() => applyVendorOp(o, "V1", "issue", { note: "no" }, "s"), /why/);
+  applyVendorOp(o, "V1", "issue", { note: "Out of stock" }, "Seller: Asha");
+  assert.equal(o.vendorParts![0].status, "cancel_requested");
+  assert.match(o.notes!.at(-1)!.text, /Out of stock/);
+});
+
+test("seller registration validation", () => {
+  const good = {
+    plan: "premium", businessName: "Asha Stores", ownerName: "Asha K", email: "asha@example.com", phone: "+91 98765 43210", password: "correct-horse-battery", password2: "correct-horse-battery",
+    address: "12 MG Road, Indiranagar", city: "Bengaluru", state: "Karnataka", pincode: "560038", gstin: "", pan: "abcde1234f", bankHolder: "Asha K", ifsc: "sbin0001234",
+    account: "123456789012", account2: "1234 5678 9012", upi: "", terms: "on",
+  };
+  const r = validateRegistration(good);
+  assert.equal(r.ok, true);
+  if (r.ok) { assert.equal(r.value.phone, "9876543210"); assert.equal(r.value.pan, "ABCDE1234F"); }
+  const bad = validateRegistration({ ...good, plan: "gold", pan: "123", ifsc: "SBIN1234567", account2: "1", terms: "" });
+  assert.equal(bad.ok, false);
+  if (!bad.ok) for (const k of ["plan", "pan", "ifsc", "account2", "terms"]) assert.ok(bad.errors[k], k);
+});
+
+test("seller listing validation: https photos, MRP not below price, rights confirmed", () => {
+  const raw = { title: "Steel Chopper 3 Blades", category: "kitchen", description: "A hand-pull chopper with three steel blades.", price: "299", mrp: "499", stock: "10", images: "https://x.example/a.jpg", rights: "on" };
+  assert.equal(validateVendorProduct(raw, ["kitchen"]).ok, true);
+  const bad = validateVendorProduct({ ...raw, mrp: "100", images: "http://x/a.jpg", rights: "" }, ["kitchen"]);
+  assert.equal(bad.ok, false);
+  if (!bad.ok) assert.deepEqual(Object.keys(bad.errors).sort(), ["images", "mrp", "rights"]);
+});
+
+function walletDb(): WalletSource {
+  const order = (id: string, status: Order["status"], price: number, partStatus: string): Order => ({
+    id, status, createdAt: "2026-11-01T10:00:00Z", paymentMethod: "online",
+    statusHistory: [{ status, at: "2026-11-03T10:00:00Z" }],
+    items: [{ vendorId: "V1", sku: "A", title: "Chopper", qty: 1, unitPrice: price }],
+    vendorParts: [{ vendorId: "V1", status: partStatus, delivery: 30, dispatchBy: "", history: partStatus === "delivered" ? [{ status: "delivered", at: "2026-11-04T10:00:00Z" }] : [], shipmentId: null }],
+  }) as unknown as Order;
+  return {
+    orders: [
+      order("D1", "delivered", 349, "delivered"), // credited: 379
+      order("S1", "shipped", 200, "shipped"), // pending: 230
+      order("C1", "cancelled", 999, "new"), // void
+      order("P1", "payment_pending", 500, "new"), // ignored
+    ],
+    vendorPayouts: [], vendorWithdrawals: [], vendorAdjustments: [], settings: {},
+  };
+}
+
+test("wallet: delivered sales are credited in full, undelivered wait, cancelled don't count", () => {
+  const led = vendorLedger(walletDb(), "V1");
+  assert.equal(led.totals.credited, 379);
+  assert.equal(led.totals.pending, 230);
+  assert.equal(led.totals.balance, 379);
+  assert.equal(led.totals.available, 379);
+  assert.equal(led.sales.length, 3);
+  assert.equal(led.history[0].kind, "sale");
+  assert.equal(led.history[0].at, "2026-11-04T10:00:00Z");
+});
+
+test("wallet: a withdrawal request holds money; paying it moves it out; adjustments apply", () => {
+  const db = walletDb();
+  db.vendorWithdrawals.push({ id: "w1", vendorId: "V1", amount: 300, status: "requested", requestedAt: "2026-11-05T00:00:00Z", decidedAt: null, reference: "", note: "", by: null });
+  let t = vendorLedger(db, "V1").totals;
+  assert.equal(t.balance, 379);
+  assert.equal(t.available, 79);
+  assert.equal(vendorLedger(db, "V1").openWithdrawal?.id, "w1");
+  db.vendorWithdrawals[0].status = "paid";
+  db.vendorPayouts.push({ id: "p1", vendorId: "V1", amount: 300, reference: "UTR1", at: "2026-11-06T00:00:00Z", by: "Owner", note: "", withdrawalId: "w1" });
+  db.vendorAdjustments.push({ id: "a1", vendorId: "V1", amount: -49.5, reason: "Return refunded", at: "2026-11-07T00:00:00Z", by: "Owner", orderId: "D1" });
+  t = vendorLedger(db, "V1").totals;
+  assert.equal(t.paidOut, 300);
+  assert.equal(t.balance, 29.5);
+  assert.equal(t.available, 29.5);
+  assert.equal(vendorLedger(db, "V1").openWithdrawal, null);
+  assert.equal(vendorLedger(db, "V2").totals.balance, 0, "other sellers unaffected");
+});
