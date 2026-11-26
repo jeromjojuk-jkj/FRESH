@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS products (
   tags TEXT NOT NULL DEFAULT '',
   created_by_store TEXT REFERENCES stores(id)
 );
+ALTER TABLE products ADD COLUMN IF NOT EXISTS popular BOOLEAN NOT NULL DEFAULT FALSE; -- store bestseller badge
 CREATE UNIQUE INDEX IF NOT EXISTS products_barcode_uq ON products(barcode) WHERE barcode IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS store_products (

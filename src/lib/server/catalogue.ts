@@ -2,7 +2,7 @@ import type { Q } from "./db";
 import type { CatalogueProduct } from "../types";
 
 const SELECT = `SELECT p.id AS "productId", p.group_key AS "groupKey", p.name, p.brand, p.category, p.pack_label AS "packLabel",
-  p.image, sp.price, sp.mrp, sp.stock, (sp.stock > 0) AS "inStock"
+  p.image, sp.price, sp.mrp, sp.stock, (sp.stock > 0) AS "inStock", p.popular
   FROM store_products sp JOIN products p ON p.id = sp.product_id
   WHERE sp.store_id = $1 AND sp.active`;
 
@@ -24,7 +24,7 @@ export async function featured(q: Q, storeId: string): Promise<CatalogueProduct[
 }
 
 function terms(s: string) {
-  return s.toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter(Boolean).slice(0, 5);
+  return s.toLowerCase().replace(/[^\p{L}\p{M}\p{N}\s]/gu, " ").split(/\s+/).filter(Boolean).slice(0, 5);
 }
 
 /** Search only within the selected store's catalogue. Matches names, brands and local names (dahi, aloo…). */

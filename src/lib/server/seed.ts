@@ -6,16 +6,16 @@ type P = [string, string, string, string, string, string, string, string, number
 
 export const DEMO_PRODUCTS: P[] = [
   // Fruits & Vegetables
-  ["tomato-500g", "tomato", "Tomato (Hybrid)", "Farm fresh", "fruits-vegetables", "500 g", "0200000000011", "tomato", 24, 30, "tamatar tomatoes"],
-  ["tomato-1kg", "tomato", "Tomato (Hybrid)", "Farm fresh", "fruits-vegetables", "1 kg", "0200000000028", "tomato", 45, 56, "tamatar tomatoes"],
-  ["onion-1kg", "onion", "Onion", "Farm fresh", "fruits-vegetables", "1 kg", "0200000000035", "onion", 38, 48, "pyaz kanda onions"],
-  ["potato-1kg", "potato", "Potato", "Farm fresh", "fruits-vegetables", "1 kg", "0200000000042", "potato", 34, 42, "aloo batata potatoes"],
-  ["banana-6", "banana", "Banana Robusta", "Farm fresh", "fruits-vegetables", "6 pcs", "0200000000059", "banana", 42, 50, "kela bananas fruit"],
+  ["tomato-500g", "tomato", "Tomato (Hybrid)", "Farm fresh", "fruits-vegetables", "500 g", "0200000000011", "tomato", 24, 30, "tamatar tomatoes தக்காளி"],
+  ["tomato-1kg", "tomato", "Tomato (Hybrid)", "Farm fresh", "fruits-vegetables", "1 kg", "0200000000028", "tomato", 45, 56, "tamatar tomatoes தக்காளி"],
+  ["onion-1kg", "onion", "Onion", "Farm fresh", "fruits-vegetables", "1 kg", "0200000000035", "onion", 38, 48, "pyaz kanda onions வெங்காயம்"],
+  ["potato-1kg", "potato", "Potato", "Farm fresh", "fruits-vegetables", "1 kg", "0200000000042", "potato", 34, 42, "aloo batata potatoes உருளைக்கிழங்கு"],
+  ["banana-6", "banana", "Banana Robusta", "Farm fresh", "fruits-vegetables", "6 pcs", "0200000000059", "banana", 42, 50, "kela bananas fruit வாழைப்பழம்"],
   ["apple-4", "apple", "Shimla Apple", "Farm fresh", "fruits-vegetables", "4 pcs (approx. 550 g)", "0200000000066", "apple", 129, 160, "seb apples fruit"],
-  ["carrot-500g", "carrot", "Carrot (Ooty)", "Farm fresh", "fruits-vegetables", "500 g", "0200000000073", "carrot", 32, 40, "gajar carrots"],
+  ["carrot-500g", "carrot", "Carrot (Ooty)", "Farm fresh", "fruits-vegetables", "500 g", "0200000000073", "carrot", 32, 40, "gajar carrots கேரட்"],
   ["cucumber-500g", "cucumber", "Cucumber", "Farm fresh", "fruits-vegetables", "500 g", "0200000000080", "cucumber", 25, 32, "kheera kakdi"],
-  ["chilli-100g", "chilli", "Green Chilli", "Farm fresh", "fruits-vegetables", "100 g", "0200000000097", "chilli", 9, 12, "hari mirch chili"],
-  ["lemon-4", "lemon", "Lemon", "Farm fresh", "fruits-vegetables", "4 pcs", "0200000000103", "lemon", 20, 25, "nimbu lime"],
+  ["chilli-100g", "chilli", "Green Chilli", "Farm fresh", "fruits-vegetables", "100 g", "0200000000097", "chilli", 9, 12, "hari mirch chili மிளகாய்"],
+  ["lemon-4", "lemon", "Lemon", "Farm fresh", "fruits-vegetables", "4 pcs", "0200000000103", "lemon", 20, 25, "nimbu lime எலுமிச்சை"],
   ["mango-1kg", "mango", "Alphonso Mango", "Farm fresh", "fruits-vegetables", "1 kg (3–4 pcs)", "0200000000110", "mango", 299, 360, "aam hapus mangoes fruit"],
   ["garlic-200g", "garlic", "Garlic", "Farm fresh", "fruits-vegetables", "200 g", "0200000000127", "garlic", 48, 60, "lahsun"],
   ["coriander-100g", "coriander", "Coriander Leaves", "Farm fresh", "fruits-vegetables", "1 bunch (100 g)", "0200000000134", "coriander", 12, 15, "dhania cilantro"],
@@ -24,24 +24,24 @@ export const DEMO_PRODUCTS: P[] = [
   ["brinjal-500g", "brinjal", "Brinjal (Purple)", "Farm fresh", "fruits-vegetables", "500 g", "0200000000165", "brinjal", 30, 38, "baingan eggplant"],
   ["grapes-500g", "grapes", "Green Grapes", "Farm fresh", "fruits-vegetables", "500 g", "0200000000172", "grapes", 79, 99, "angoor fruit"],
   // Dairy & Eggs
-  ["milk-toned-500", "milk-toned", "Toned Milk", "Nandini Valley", "dairy-eggs", "500 ml", "8900000000017", "milk", 27, 27, "doodh dudh milk toned"],
-  ["milk-toned-1l", "milk-toned", "Toned Milk", "Nandini Valley", "dairy-eggs", "1 L", "8900000000024", "milk", 52, 52, "doodh dudh milk toned"],
-  ["milk-full-500", "milk-full", "Full Cream Milk", "Nandini Valley", "dairy-eggs", "500 ml", "8900000000031", "milk", 33, 33, "doodh dudh milk full cream"],
-  ["milk-full-1l", "milk-full", "Full Cream Milk", "Nandini Valley", "dairy-eggs", "1 L", "8900000000048", "milk", 64, 64, "doodh dudh milk full cream"],
-  ["curd-400g", "curd", "Fresh Curd", "Nandini Valley", "dairy-eggs", "400 g", "8900000000055", "curd", 35, 38, "dahi yogurt yoghurt"],
+  ["milk-toned-500", "milk-toned", "Toned Milk", "Nandini Valley", "dairy-eggs", "500 ml", "8900000000017", "milk", 27, 27, "doodh dudh milk toned பால்"],
+  ["milk-toned-1l", "milk-toned", "Toned Milk", "Nandini Valley", "dairy-eggs", "1 L", "8900000000024", "milk", 52, 52, "doodh dudh milk toned பால்"],
+  ["milk-full-500", "milk-full", "Full Cream Milk", "Nandini Valley", "dairy-eggs", "500 ml", "8900000000031", "milk", 33, 33, "doodh dudh milk full cream பால்"],
+  ["milk-full-1l", "milk-full", "Full Cream Milk", "Nandini Valley", "dairy-eggs", "1 L", "8900000000048", "milk", 64, 64, "doodh dudh milk full cream பால்"],
+  ["curd-400g", "curd", "Fresh Curd", "Nandini Valley", "dairy-eggs", "400 g", "8900000000055", "curd", 35, 38, "dahi yogurt yoghurt தயிர்"],
   ["paneer-200g", "paneer", "Malai Paneer", "Gokul Farms", "dairy-eggs", "200 g", "8900000000062", "paneer", 90, 100, "cottage cheese"],
   ["butter-100g", "butter", "Salted Butter", "Gokul Farms", "dairy-eggs", "100 g", "8900000000079", "butter", 58, 60, "makhan"],
   ["butter-500g", "butter", "Salted Butter", "Gokul Farms", "dairy-eggs", "500 g", "8900000000086", "butter", 275, 285, "makhan"],
-  ["eggs-6", "eggs", "Farm Eggs", "Happy Hens", "dairy-eggs", "6 pcs", "8900000000093", "eggs", 48, 54, "anda egg"],
-  ["eggs-12", "eggs", "Farm Eggs", "Happy Hens", "dairy-eggs", "12 pcs", "8900000000109", "eggs", 92, 104, "anda egg"],
-  ["ghee-500ml", "ghee", "Cow Ghee", "Gokul Farms", "dairy-eggs", "500 ml jar", "8900000000116", "jar", 340, 365, "ghee clarified butter"],
+  ["eggs-6", "eggs", "Farm Eggs", "Happy Hens", "dairy-eggs", "6 pcs", "8900000000093", "eggs", 48, 54, "anda egg முட்டை"],
+  ["eggs-12", "eggs", "Farm Eggs", "Happy Hens", "dairy-eggs", "12 pcs", "8900000000109", "eggs", 92, 104, "anda egg முட்டை"],
+  ["ghee-500ml", "ghee", "Cow Ghee", "Gokul Farms", "dairy-eggs", "500 ml jar", "8900000000116", "jar", 340, 365, "ghee clarified butter நெய்"],
   // Rice & Grains
-  ["rice-sona-1kg", "rice-sona", "Sona Masoori Rice", "Golden Harvest", "rice-grains", "1 kg", "0890000000014", "rice", 72, 85, "chawal rice raw"],
-  ["rice-sona-5kg", "rice-sona", "Sona Masoori Rice", "Golden Harvest", "rice-grains", "5 kg", "0890000000021", "rice", 345, 410, "chawal rice raw"],
-  ["rice-basmati-1kg", "rice-basmati", "Basmati Rice", "Golden Harvest", "rice-grains", "1 kg", "0890000000038", "rice", 145, 180, "chawal biryani basmati"],
-  ["atta-5kg", "atta", "Whole Wheat Atta", "Chakki Gold", "rice-grains", "5 kg", "0890000000045", "wheat", 255, 290, "atta flour wheat chapati roti"],
-  ["toor-1kg", "toor", "Toor Dal", "Golden Harvest", "rice-grains", "1 kg", "0890000000052", "dal", 165, 190, "arhar dal lentils pulses"],
-  ["moong-500g", "moong", "Moong Dal", "Golden Harvest", "rice-grains", "500 g", "0890000000069", "dal", 72, 85, "dal lentils pulses"],
+  ["rice-sona-1kg", "rice-sona", "Sona Masoori Rice", "Golden Harvest", "rice-grains", "1 kg", "0890000000014", "rice", 72, 85, "chawal rice raw அரிசி"],
+  ["rice-sona-5kg", "rice-sona", "Sona Masoori Rice", "Golden Harvest", "rice-grains", "5 kg", "0890000000021", "rice", 345, 410, "chawal rice raw அரிசி"],
+  ["rice-basmati-1kg", "rice-basmati", "Basmati Rice", "Golden Harvest", "rice-grains", "1 kg", "0890000000038", "rice", 145, 180, "chawal biryani basmati அரிசி"],
+  ["atta-5kg", "atta", "Whole Wheat Atta", "Chakki Gold", "rice-grains", "5 kg", "0890000000045", "wheat", 255, 290, "atta flour wheat chapati roti கோதுமை மாவு"],
+  ["toor-1kg", "toor", "Toor Dal", "Golden Harvest", "rice-grains", "1 kg", "0890000000052", "dal", 165, 190, "arhar dal lentils pulses பருப்பு"],
+  ["moong-500g", "moong", "Moong Dal", "Golden Harvest", "rice-grains", "500 g", "0890000000069", "dal", 72, 85, "dal lentils pulses பருப்பு"],
   ["bread-400g", "bread", "Whole Wheat Bread", "Morning Oven", "rice-grains", "400 g", "0890000000076", "bread", 45, 50, "bread pav loaf"],
   ["salt-1kg", "salt", "Iodised Salt", "Sagar", "rice-grains", "1 kg", "0890000000083", "salt", 26, 28, "namak"],
   ["honey-250g", "honey", "Wild Forest Honey", "Hive & Co", "rice-grains", "250 g", "0890000000090", "honey", 135, 160, "shahad"],
@@ -54,9 +54,9 @@ export const DEMO_PRODUCTS: P[] = [
   ["popcorn-100g", "popcorn", "Butter Popcorn", "Crunchmint", "snacks", "100 g", "0450000000064", "popcorn", 40, 45, "popcorn"],
   // Drinks
   ["juice-mango-1l", "juice-mango", "Mango Juice", "Orchard Pure", "drinks", "1 L", "0560000000016", "juice", 110, 120, "juice drink"],
-  ["tea-250g", "tea", "Assam Tea Leaves", "Brahmaputra Estates", "drinks", "250 g", "0560000000023", "tea", 145, 160, "chai patti tea"],
-  ["coffee-200g", "coffee", "Filter Coffee Powder", "Malnad Roasters", "drinks", "200 g", "0560000000030", "coffee", 160, 180, "coffee filter kaapi"],
-  ["coconut-water-200ml", "coconut-water", "Tender Coconut Water", "Orchard Pure", "drinks", "200 ml", "0560000000047", "coconut", 45, 50, "nariyal pani"],
+  ["tea-250g", "tea", "Assam Tea Leaves", "Brahmaputra Estates", "drinks", "250 g", "0560000000023", "tea", 145, 160, "chai patti tea டீ"],
+  ["coffee-200g", "coffee", "Filter Coffee Powder", "Malnad Roasters", "drinks", "200 g", "0560000000030", "coffee", 160, 180, "coffee filter kaapi காபி"],
+  ["coconut-water-200ml", "coconut-water", "Tender Coconut Water", "Orchard Pure", "drinks", "200 ml", "0560000000047", "coconut", 45, 50, "nariyal pani இளநீர்"],
   ["soda-750ml", "soda", "Lime Soda", "Fizzwell", "drinks", "750 ml", "0560000000054", "soda", 40, 40, "soft drink cold drink"],
   ["water-1l", "water", "Packaged Drinking Water", "Aquaclear", "drinks", "1 L", "0560000000061", "water", 20, 20, "bisleri paani water bottle"],
   // Household
@@ -103,6 +103,8 @@ export async function seedDatabase(q: Q): Promise<void> {
       [id, group, name, brand, cat, pack, barcode, `/img/p/${img}.webp`, tags],
     );
   }
+  // Store bestsellers (demo data) get the "Popular" badge.
+  await q(`UPDATE products SET popular=TRUE WHERE id = ANY($1::text[])`, [["milk-toned-500", "milk-toned-1l", "tomato-500g", "tomato-1kg", "onion-1kg", "banana-6", "rice-sona-5kg", "eggs-6", "curd-400g", "potato-1kg", "bread-400g", "carrot-500g"]]);
   for (const s of DEMO_STORES) {
     const rule = STORE_RULES[s.id];
     for (const p of DEMO_PRODUCTS) {

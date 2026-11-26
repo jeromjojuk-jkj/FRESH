@@ -1,11 +1,12 @@
 "use client";
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useEffect, useMemo, useState } from "react";
 import type { CatalogueProduct } from "@/lib/types";
+import { CATEGORIES } from "@/lib/types";
 import { rupees } from "@/lib/money";
 import { api } from "@/lib/client/api";
 import { cart, setQty } from "@/lib/client/store";
 import { Button, Sheet } from "../ui";
-import { IconClock, IconMinus, IconPlus } from "../icons";
+import { IconMinus, IconPlus } from "../icons";
 
 export function groupVariants(products: CatalogueProduct[]): CatalogueProduct[][] {
   const map = new Map<string, CatalogueProduct[]>();
@@ -26,35 +27,22 @@ export function addToCart(storeId: string, p: Pick<CatalogueProduct, "productId"
   setQty(storeId, p.productId, Math.min(qty, p.stock), { name: p.name, packLabel: p.packLabel, image: p.image, price: p.price });
 }
 
-const savePct = (p: CatalogueProduct) => (p.mrp > p.price ? Math.round(((p.mrp - p.price) / p.mrp) * 100) : 0);
-
-function SaveTag({ p, className = "" }: { p: CatalogueProduct; className?: string }) {
-  const pct = savePct(p);
-  if (pct < 3 || !p.inStock) return null;
-  return (
-    <span className={`save-tag absolute left-2 top-0 z-[1] bg-deal px-1.5 pb-2.5 pt-1.5 text-center text-[11px] font-bold leading-none text-white ${className}`}>
-      {pct}%<span className="block text-[10px] font-semibold">OFF</span>
-    </span>
-  );
-}
-
-/** Pill-shaped stepper that sits where the round + button was. */
-export function MiniStepper({ qty, max, label, onChange }: { qty: number; max?: number; label: string; onChange: (n: number) => void }) {
-  return (
-    <div className="flex h-11 shrink-0 items-center rounded-full bg-brand text-white" role="group" aria-label={`Quantity of ${label}`}>
-      <button type="button" onClick={() => onChange(qty - 1)} className="grid h-11 w-10 place-items-center rounded-l-full hover:bg-brand-dark" aria-label={qty === 1 ? `Remove ${label}` : `Decrease ${label}`}><IconMinus className="h-4 w-4" /></button>
-      <output className="min-w-5 text-center text-sm font-bold" aria-live="polite">{qty}</output>
-      <button type="button" onClick={() => onChange(qty + 1)} disabled={max !== undefined && qty >= max} className="grid h-11 w-10 place-items-center rounded-r-full hover:bg-brand-dark disabled:opacity-40" aria-label={`Increase ${label}`}><IconPlus className="h-4 w-4" /></button>
-    </div>
-  );
-}
-
-/** Estimated minutes for the selected store, shown on each card ("22 MINS"). */
+/** Kept for screens that show the store's delivery time; cards no longer use it. */
 export const EtaContext = createContext<number | null>(null);
+
+export const offPct = (p: Pick<CatalogueProduct, "mrp" | "price">) => (p.mrp > p.price ? Math.round(((p.mrp - p.price) / p.mrp) * 100) : 0);
+
+// Soft pastel backgrounds for product pictures, stable per product.
+const TINTS = ["bg-t0", "bg-t1", "bg-t2", "bg-t3", "bg-t4"];
+export function tintFor(id: string) {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+  return TINTS[h % TINTS.length];
+}
+const categoryName = (slug: string) => CATEGORIES.find((c) => c.slug === slug)?.name ?? "";
 
 export function ProductCard({ variants, storeId }: { variants: CatalogueProduct[]; storeId: string }) {
   const c = cart.use();
-  const eta = useContext(EtaContext);
   const inCart = (id: string) => (c.storeId === storeId ? c.items[id]?.qty ?? 0 : 0);
   const initial = useMemo(
     () => variants.find((v) => inCart(v.productId) > 0) ?? variants.find((v) => v.inStock) ?? variants[0],
@@ -66,62 +54,60 @@ export function ProductCard({ variants, storeId }: { variants: CatalogueProduct[
   const p = variants.find((v) => v.productId === selId) ?? variants[0];
   const qty = inCart(p.productId);
   const label = `${p.name}, ${p.packLabel}`;
-  const pct = savePct(p);
+  const pct = offPct(p);
 
   return (
-    <article className="relative flex h-full flex-col rounded-xl border border-line bg-white p-2" aria-label={label}>
-      {pct >= 3 && p.inStock ? (
-        <span className="save-tag absolute left-1.5 top-0 z-[1] bg-deal px-1 pb-2 pt-1 text-center text-[10px] font-bold leading-none text-white">
-          {pct}%<span className="block text-[9px]">OFF</span>
-        </span>
-      ) : null}
+    <article className="relative flex h-full flex-col rounded-[20px] bg-white px-2 pb-3 pt-2 shadow-[0_4px_18px_-10px_rgba(0,0,0,.22)]" aria-label={label}>
       <button type="button" onClick={() => setDetail(true)} aria-label={`Details for ${label}`}
-        className={`relative grid aspect-square w-full place-items-center rounded-lg bg-tile ${p.inStock ? "" : "opacity-60 grayscale"}`}>
+        className={`relative grid aspect-[1.05] w-full place-items-center rounded-2xl ${tintFor(p.productId)} ${p.inStock ? "" : "opacity-60 grayscale"}`}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={p.image} alt="" width={256} height={256} loading="lazy" decoding="async" className="h-[70%] w-[70%] object-contain" />
-        {!p.inStock ? <span className="absolute inset-x-2 bottom-2 rounded-md bg-white/95 py-0.5 text-center text-[11px] font-semibold text-ink">Out of stock</span> : null}
+        <img src={p.image} alt="" width={256} height={256} loading="lazy" decoding="async" className="h-[58%] w-[58%] object-contain" />
+        {!p.inStock ? <span className="absolute inset-x-3 bottom-2 rounded-lg bg-white/95 py-0.5 text-center text-xs font-semibold text-ink">Out of stock</span> : null}
       </button>
-      {eta ? (
-        <span className="mt-1.5 inline-flex w-fit items-center gap-1 rounded-md bg-tile px-1.5 py-0.5 text-[9.5px] font-bold text-ink"><IconClock className="h-3 w-3" />{eta} MINS</span>
+      {pct >= 1 && p.inStock ? (
+        <span className="absolute left-2 top-2 rounded-br-2xl rounded-tl-2xl bg-offbg px-2 py-1.5 text-[13px] font-extrabold leading-[1.05] text-brand">{pct}%<br />OFF</span>
       ) : null}
-      <h3 className="mt-1 line-clamp-2 min-h-[2.6em] text-[12.5px] font-semibold leading-[1.3] text-ink">{p.name}</h3>
+      {p.popular ? <span className="absolute right-3.5 top-4 rounded-full bg-white px-2 py-0.5 text-xs font-semibold text-brand shadow-[var(--shadow-soft)]">★ Popular</span> : null}
+
+      <h3 className="mx-1.5 mt-2.5 line-clamp-2 min-h-[2.6em] text-[15px] font-semibold leading-[1.3] text-ink">{p.name}</h3>
       {variants.length > 1 ? (
-        <div className="mt-1 flex flex-wrap gap-1" role="radiogroup" aria-label={`Pack size for ${p.name}`}>
+        <div className="mx-1.5 mt-1.5 flex flex-wrap gap-1" role="radiogroup" aria-label={`Pack size for ${p.name}`}>
           {variants.map((v) => {
             const on = v.productId === p.productId;
             const n = inCart(v.productId);
             return (
               <button key={v.productId} type="button" role="radio" aria-checked={on} onClick={() => setSelId(v.productId)}
-                className={`min-h-8 rounded-lg border-[1.5px] px-1.5 text-[11px] font-semibold ${on ? "border-brand bg-mint text-ink" : "border-line bg-white text-ink-2 hover:border-brand"}`}>
+                className={`min-h-8 rounded-[10px] border-[1.5px] px-2 text-xs font-semibold ${on ? "border-brand bg-mint text-ink" : "border-line bg-white text-ink-2 hover:border-brand"}`}>
                 {v.packLabel}{n ? ` · ${n}` : ""}
               </button>
             );
           })}
         </div>
       ) : (
-        <p className="mt-0.5 text-[11.5px] text-ink-2">{p.packLabel}</p>
+        <p className="mx-1.5 mt-1 text-[13px] text-ink-2">{p.packLabel}</p>
       )}
-      <div className="mt-auto flex items-end justify-between gap-1.5 pt-2">
-        <span className="min-w-0 leading-tight">
-          <span className="block text-[13.5px] font-bold text-ink">{rupees(p.price)}</span>
-          {p.mrp > p.price ? <span className="text-[11px] text-ink-2 line-through"><span className="sr-only">MRP </span>{rupees(p.mrp)}</span> : null}
+
+      <div className="mx-1.5 mt-auto flex items-end justify-between gap-1.5 pt-3">
+        <span className="min-w-0 leading-[1.1]">
+          <span className="block text-lg font-extrabold text-ink">{rupees(p.price)}</span>
+          {p.mrp > p.price ? <span className="text-[11.5px] text-ink-2 line-through">MRP {rupees(p.mrp)}</span> : null}
         </span>
         {!p.inStock ? (
-          <span className="pb-1 text-[11px] font-semibold text-ink-2">Sold out</span>
+          <span className="pb-2 text-xs font-semibold text-ink-2">Sold out</span>
         ) : qty > 0 ? (
-          <div className="flex h-9 min-w-[72px] items-center rounded-lg bg-brand text-white" role="group" aria-label={`Quantity of ${label}`}>
-            <button type="button" onClick={() => addToCart(storeId, p, qty - 1)} className="relative grid h-9 w-6 place-items-center after:absolute after:-inset-x-0.5 after:-inset-y-1" aria-label={qty === 1 ? `Remove ${label}` : `Decrease ${label}`}><IconMinus className="h-3.5 w-3.5" /></button>
-            <output className="flex-1 text-center text-[13px] font-bold" aria-live="polite">{qty}</output>
-            <button type="button" onClick={() => addToCart(storeId, p, qty + 1)} disabled={qty >= p.stock} className="relative grid h-9 w-6 place-items-center after:absolute after:-inset-x-0.5 after:-inset-y-1 disabled:opacity-40" aria-label={`Increase ${label}`}><IconPlus className="h-3.5 w-3.5" /></button>
+          <div className="flex h-11 min-w-[84px] shrink-0 items-center rounded-[14px] bg-brand text-white" role="group" aria-label={`Quantity of ${label}`}>
+            <button type="button" onClick={() => addToCart(storeId, p, qty - 1)} className="grid h-11 w-8 place-items-center" aria-label={qty === 1 ? `Remove ${label}` : `Decrease ${label}`}><IconMinus className="h-4 w-4" /></button>
+            <output className="flex-1 text-center font-extrabold" aria-live="polite">{qty}</output>
+            <button type="button" onClick={() => addToCart(storeId, p, qty + 1)} disabled={qty >= p.stock} className="grid h-11 w-8 place-items-center disabled:opacity-40" aria-label={`Increase ${label}`}><IconPlus className="h-4 w-4" /></button>
           </div>
         ) : (
           <button type="button" onClick={() => addToCart(storeId, p, 1)} aria-label={`Add ${label} to cart`}
-            className="relative h-9 min-w-16 rounded-lg border-[1.5px] border-brand bg-mint px-2 text-[13px] font-bold tracking-wide text-brand after:absolute after:-inset-y-1 after:inset-x-0 hover:bg-fresh">
+            className="h-11 min-w-[72px] shrink-0 rounded-[14px] border-[1.5px] border-brand bg-white px-3 text-[15px] font-extrabold text-brand hover:bg-mint">
             ADD
           </button>
         )}
       </div>
-      {p.inStock && p.stock <= 5 ? <p className="mt-1 text-[10.5px] font-semibold text-warn">Only {p.stock} left</p> : null}
+      {p.inStock && p.stock <= 5 ? <p className="mx-1.5 mt-1 text-[11px] font-semibold text-warn">Only {p.stock} left</p> : null}
 
       <ProductSheet open={detail} onClose={() => setDetail(false)} storeId={storeId} variants={variants} selectedId={p.productId} onSelect={setSelId} />
     </article>
@@ -138,7 +124,7 @@ const CATEGORY_NOTE: Record<string, string> = {
   "personal-care": "Sold sealed in the manufacturer’s pack.",
 };
 
-/** Product detail: big image, pack sizes, details, picks from the same store, quantity + add. */
+/** Product detail: big picture, price, pack sizes, "Picked for you", quantity box + Add item. */
 function ProductSheet({ open, onClose, storeId, variants, selectedId, onSelect }: {
   open: boolean; onClose: () => void; storeId: string; variants: CatalogueProduct[]; selectedId: string; onSelect: (id: string) => void;
 }) {
@@ -151,62 +137,53 @@ function ProductSheet({ open, onClose, storeId, variants, selectedId, onSelect }
   useEffect(() => {
     if (!open) return;
     api<{ products: CatalogueProduct[] }>(`/stores/${storeId}/products?category=${p.category}`)
-      .then((r) => setPicks(r.products.filter((x) => x.groupKey !== p.groupKey && x.inStock).slice(0, 2)))
+      .then((r) => setPicks(r.products.filter((x) => x.groupKey !== p.groupKey && x.inStock).slice(0, 6)))
       .catch(() => setPicks([]));
   }, [open, storeId, p.category, p.groupKey]);
-  const pct = savePct(p);
+  const pct = offPct(p);
   return (
     <Sheet open={open} onClose={onClose} title="Product details">
       <div className="space-y-4">
-        <div className="relative grid aspect-[16/10] place-items-center rounded-3xl bg-tile">
-          <SaveTag p={p} className="left-3" />
+        <div className={`relative grid aspect-[16/9] place-items-center overflow-hidden rounded-[22px] ${tintFor(p.productId)}`}>
+          {pct >= 1 && p.inStock ? <span className="absolute left-0 top-0 rounded-br-[20px] rounded-tl-[20px] bg-offbg px-4 py-3 text-xl font-extrabold leading-[1.05] text-brand">{pct}%<br />Save</span> : null}
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={p.image} alt="" className="h-[76%] w-auto max-w-[62%] object-contain drop-shadow" />
+          <img src={p.image} alt="" className="h-[70%] w-auto max-w-[60%] object-contain" />
         </div>
         <div>
-          <h3 className="text-xl font-semibold">{p.name}</h3>
-          <p className="mt-1 flex flex-wrap items-center gap-2">
-            <span className="text-2xl font-bold">{rupees(p.price)}</span>
-            {p.mrp > p.price ? <span className="text-sm text-ink-2 line-through">{rupees(p.mrp)}</span> : null}
-            {pct >= 3 ? <span className="rounded-full bg-fresh px-2 py-0.5 text-xs font-semibold text-brand-dark">{pct}% off MRP</span> : null}
-            <span className="rounded-full bg-tile px-2 py-0.5 text-sm font-semibold">{p.packLabel}</span>
+          <h3 className="text-2xl font-bold leading-tight">{p.name} <span className="font-medium text-ink-2">{p.packLabel}</span></h3>
+          <p className="mt-1.5 flex flex-wrap items-center gap-2.5">
+            <span className="text-3xl font-extrabold leading-none">{rupees(p.price)}</span>
+            {p.mrp > p.price ? <span className="text-ink-2 line-through">MRP {rupees(p.mrp)}</span> : null}
+            {p.popular ? <span className="rounded-full bg-offbg px-3 py-1 text-[13px] font-semibold text-brand">★ Popular here</span> : null}
           </p>
+          <p className="mt-2 text-sm text-ink-2">{p.inStock ? `In stock (${p.stock})` : "Out of stock"} · {categoryName(p.category)}{p.brand ? ` · ${p.brand}` : ""}</p>
         </div>
         {variants.length > 1 ? (
           <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Pack size">
             {variants.map((v) => (
               <button key={v.productId} type="button" role="radio" aria-checked={v.productId === p.productId} onClick={() => onSelect(v.productId)}
-                className={`min-h-11 rounded-xl border-2 px-3 text-sm font-semibold ${v.productId === p.productId ? "border-brand bg-fresh" : "border-line"}`}>
+                className={`min-h-11 rounded-xl border-2 px-3 text-sm font-semibold ${v.productId === p.productId ? "border-brand bg-mint" : "border-line"}`}>
                 {v.packLabel} · {rupees(v.price)}
               </button>
             ))}
           </div>
         ) : null}
-        <div>
-          <h4 className="mb-1 text-sm font-semibold">More details</h4>
-          <p className="text-sm text-ink-2">{p.brand ? `${p.brand} · ` : ""}{p.packLabel}. {p.inStock ? `${p.stock} in stock at this store.` : "Out of stock at this store right now."} {CATEGORY_NOTE[p.category] ?? ""}</p>
-        </div>
+        <p className="text-sm text-ink-2">{CATEGORY_NOTE[p.category] ?? ""}</p>
         {picks.length ? (
-          <div>
-            <h4 className="mb-2 text-sm font-semibold">Picks for you</h4>
-            <ul className="grid grid-cols-2 gap-2">
-              {picks.map((x) => (
-                <li key={x.productId} className="flex items-center gap-2 rounded-2xl border border-line p-2 shadow-[var(--shadow-soft)]">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={x.image} alt="" className="h-10 w-10 shrink-0 object-contain" />
-                  <span className="min-w-0 flex-1 text-xs"><b className="block truncate">{x.name}</b>{x.packLabel} · {rupees(x.price)}</span>
-                  <button type="button" onClick={() => addToCart(storeId, x, (c.storeId === storeId ? c.items[x.productId]?.qty ?? 0 : 0) + 1)} aria-label={`Add ${x.name}, ${x.packLabel} to cart`}
-                    className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-brand text-white"><IconPlus className="h-4 w-4" /></button>
-                </li>
-              ))}
-            </ul>
-          </div>
+          <section>
+            <h4 className="mb-3 text-xl font-bold">Picked for you</h4>
+            <ProductRow products={picks} storeId={storeId} alwaysScroll />
+          </section>
         ) : null}
-        <div className="sticky bottom-0 -mx-1 flex items-center gap-3 bg-white px-1 pt-2">
+        <div className="sticky bottom-0 -mx-5 -mb-[max(1.25rem,env(safe-area-inset-bottom))] flex items-center gap-3 border-t border-line bg-white px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3">
           {p.inStock ? (
             <>
-              <MiniStepper qty={want} max={p.stock} label={`${p.name} to add`} onChange={(n) => setWant(Math.max(1, n))} />
-              <Button size="lg" className="flex-1 rounded-full" onClick={() => { addToCart(storeId, p, want); onClose(); }}>
+              <div className="flex h-14 w-[40%] max-w-[150px] items-center rounded-2xl border-[1.5px] border-line" role="group" aria-label="Quantity to add">
+                <button type="button" onClick={() => setWant(Math.max(1, want - 1))} disabled={want <= 1} className="grid h-14 w-11 place-items-center text-brand disabled:opacity-35" aria-label="One less"><IconMinus /></button>
+                <output className="flex-1 text-center text-lg font-bold">{want}</output>
+                <button type="button" onClick={() => setWant(Math.min(p.stock, want + 1))} disabled={want >= p.stock} className="grid h-14 w-11 place-items-center text-brand disabled:opacity-35" aria-label="One more"><IconPlus /></button>
+              </div>
+              <Button size="lg" className="flex-1 !rounded-2xl text-[17px]" onClick={() => { addToCart(storeId, p, want); onClose(); }}>
                 {inCart ? "Update cart" : "Add item"} · {rupees(p.price * want)}
               </Button>
             </>
@@ -220,18 +197,18 @@ function ProductSheet({ open, onClose, storeId, variants, selectedId, onSelect }
 export function ProductGrid({ products, storeId }: { products: CatalogueProduct[]; storeId: string }) {
   const groups = groupVariants(products);
   return (
-    <div className="grid grid-cols-2 gap-x-2 gap-y-2.5 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5">
       {groups.map((g) => <ProductCard key={g.map((x) => x.productId).join()} variants={g} storeId={storeId} />)}
     </div>
   );
 }
 
-export function ProductRow({ products, storeId }: { products: CatalogueProduct[]; storeId: string }) {
+export function ProductRow({ products, storeId, alwaysScroll }: { products: CatalogueProduct[]; storeId: string; alwaysScroll?: boolean }) {
   const groups = groupVariants(products);
   return (
-    <div className="no-scrollbar relative -mx-4 flex gap-2.5 overflow-x-auto px-4 pb-1 md:mx-0 md:grid md:grid-cols-4 md:overflow-visible md:px-0 xl:grid-cols-5">
+    <div className={`no-scrollbar relative -mx-4 flex gap-3 overflow-x-auto px-4 pb-2 pt-0.5 ${alwaysScroll ? "" : "md:mx-0 md:grid md:grid-cols-4 md:overflow-visible md:px-0 xl:grid-cols-5"}`}>
       {groups.map((g) => (
-        <div key={g.map((x) => x.productId).join()} className="w-[140px] shrink-0 md:w-auto">
+        <div key={g.map((x) => x.productId).join()} className={`w-[168px] shrink-0 ${alwaysScroll ? "" : "md:w-auto"}`}>
           <ProductCard variants={g} storeId={storeId} />
         </div>
       ))}

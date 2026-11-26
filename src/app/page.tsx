@@ -6,12 +6,12 @@ import type { CatalogueProduct } from "@/lib/types";
 import { Welcome } from "@/components/customer/Welcome";
 import { ShopFrame } from "@/components/customer/Frame";
 import { SearchBox } from "@/components/customer/SearchBox";
-import { ProductRow } from "@/components/customer/ProductCard";
+import { offPct, ProductRow } from "@/components/customer/ProductCard";
+import { Banners } from "@/components/customer/Banners";
 import { useNearbyStores } from "@/components/customer/useStores";
-import { CategoryTabs, CategoryTiles } from "@/components/customer/CategoryTiles";
-import { IconChevron, IconList, IconStore } from "@/components/icons";
-import { rupees } from "@/lib/money";
-import { Logo } from "@/components/Logo";
+import { CategoryTiles } from "@/components/customer/CategoryTiles";
+import { IconList, IconScooter, IconStore } from "@/components/icons";
+import { LogoMark } from "@/components/Logo";
 import { ErrorBox, Skeleton } from "@/components/ui";
 
 export default function HomePage() {
@@ -26,7 +26,7 @@ export default function HomePage() {
 const AISLES: { title: string; cats: string[]; see: string; extra?: string[] }[] = [
   { title: "Fruits & vegetables", cats: ["fruits-vegetables"], see: "fruits-vegetables" },
   { title: "Dairy, bread & eggs", cats: ["dairy-eggs"], see: "dairy-eggs", extra: ["bread-400g"] },
-  { title: "Atta, rice & dal", cats: ["rice-grains"], see: "rice-grains" },
+  { title: "Rice, atta & dal", cats: ["rice-grains"], see: "rice-grains" },
   { title: "Snacks & drinks", cats: ["snacks", "drinks"], see: "snacks" },
   { title: "Home & personal care", cats: ["household", "personal-care"], see: "household" },
 ];
@@ -39,63 +39,66 @@ function Storefront({ storeId }: { storeId: string }) {
   const again = useApi<{ products: CatalogueProduct[] }>(`/stores/${storeId}/products?section=buy-again`);
   const a = s.address!;
   const products = all.data?.products ?? [];
+  const offers = products.filter((p) => p.inStock).sort((x, y) => offPct(y) - offPct(x)).slice(0, 10);
+  const where = [a.flat, a.line].filter(Boolean).join(", ");
 
   return (
     <div className="space-y-6">
-      <header className="-mx-4 -mt-4 space-y-3 bg-gradient-to-b from-hero via-hero-2 to-white px-4 pt-3 lg:mx-0 lg:mt-0 lg:rounded-2xl lg:p-5">
-        <div className="hidden items-center justify-between sm:flex"><Logo /><Link href="/demo" className="inline-flex min-h-10 items-center rounded-xl border border-dashed border-brand bg-white px-3 text-xs font-semibold uppercase tracking-wide text-brand">Demo switcher</Link></div>
-        <div className="flex items-start gap-3">
-          <Link href="/address" className="group min-w-0 flex-1" aria-label={`Delivery in ${store ? `${store.etaMin} to ${store.etaMax} minutes` : "a few minutes"} to ${a.flat ? a.flat + ", " : ""}${a.line}. Change address`}>
-            <span className="block text-xs font-bold tracking-wide">KripFresh delivers in</span>
-            <span className="block text-[26px] font-extrabold leading-tight tracking-tight">{store ? `${store.etaMin}–${store.etaMax} minutes` : "…"}</span>
-            <span className="flex min-w-0 items-center gap-1 text-[13px]">
-              <b className="shrink-0 uppercase">{a.label ?? "Home"}</b><span className="shrink-0">–</span>
-              <span className="truncate">{[a.flat, a.floor && `${a.floor} floor`, a.line].filter(Boolean).join(", ")}</span>
-              <IconChevron className="h-4 w-4 shrink-0 rotate-90" />
-            </span>
-          </Link>
-          <Link href="/orders" className="grid h-[52px] w-[52px] shrink-0 place-items-center content-center rounded-full bg-white text-[10px] font-semibold text-ink shadow-[var(--shadow-soft)]">
-            <IconList className="h-5 w-5" />Orders
+      <header className="-mx-4 -mt-4 space-y-4 bg-gradient-to-b from-head via-head-2 to-white px-4 pb-1 pt-3.5 lg:mx-0 lg:mt-0 lg:rounded-3xl lg:p-5">
+        <div className="flex items-center gap-2.5">
+          <Link href="/" aria-label="KripFresh home" className="grid h-[52px] w-[52px] shrink-0 place-items-center rounded-full bg-white shadow-[var(--shadow-soft)]"><LogoMark /></Link>
+          <div className="min-w-0 flex-1">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-brand px-3.5 py-1.5 text-[15px] font-bold text-white"><IconScooter className="h-[18px] w-[18px]" />Delivery</span>
+            <Link href="/address" className="mt-0.5 block min-h-8 truncate py-1 text-[13px] text-ink-2" aria-label={`Delivery within 3 km${store ? `, ${store.etaMin} to ${store.etaMax} minutes` : ""}, to ${where}. Change address`}>
+              Delivery <b className="font-semibold text-ink">within 3 km</b>{store ? <> · <b className="font-semibold text-ink">{store.etaMin}–{store.etaMax} min</b></> : null} · {where}
+            </Link>
+          </div>
+          <Link href="/orders" className="grid h-[52px] w-[52px] shrink-0 place-items-center content-center rounded-full bg-white text-[9.5px] font-semibold text-ink shadow-[var(--shadow-soft)]">
+            <IconList className="h-5 w-5 text-brand" />Orders
           </Link>
         </div>
         <SearchBox storeId={storeId} />
-        <CategoryTabs />
+        <div className="flex items-center gap-2 text-[13px] text-ink-2">
+          <IconStore className="h-[18px] w-[18px] shrink-0 text-brand" />
+          <span className="min-w-0 flex-1 truncate">From <b className="text-ink">{store?.name ?? s.storeName}</b>{store ? ` · ${store.distanceLabel}` : ""}</span>
+          <Link href="/stores" className="inline-flex min-h-10 shrink-0 items-center font-semibold text-brand">Change store</Link>
+        </div>
       </header>
 
-      <div className="flex items-center gap-3 rounded-xl bg-mint px-3 py-2.5 text-[13px]">
-        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-white text-brand"><IconStore className="h-5 w-5" /></span>
-        <span className="min-w-0 flex-1"><b>{store?.name ?? s.storeName}</b>{store ? ` · ${store.distanceLabel}` : ""}
-          <span className="block text-xs text-ink-2">{store ? (store.deliveryFee ? `Delivery ${rupees(store.deliveryFee)} · free above ${rupees(store.freeDeliveryAbove)}` : "Free delivery") : ""}</span></span>
-        <Link href="/stores" className="inline-flex min-h-11 shrink-0 items-center px-1 text-[13px] font-semibold text-brand">Change store</Link>
-      </div>
-
-      {again.data && again.data.products.length > 0 ? (
-        <Aisle title="Buy again" products={again.data.products} storeId={storeId} />
-      ) : null}
+      <Banners storeName={store?.name ?? s.storeName ?? "your store"} eta={store ? `${store.etaMin}–${store.etaMax} min` : null} freeAbove={store?.freeDeliveryAbove} />
 
       <section aria-labelledby="cats" className="space-y-3">
-        <h2 id="cats" className="text-lg font-bold tracking-tight">Shop by category</h2>
+        <div className="flex items-baseline justify-between">
+          <h2 id="cats" className="text-[21px] font-bold tracking-tight">Shop by category</h2>
+          <Link href="/category/fruits-vegetables" className="inline-flex min-h-10 items-center text-[15px] font-semibold text-brand">See all ›</Link>
+        </div>
         <CategoryTiles />
       </section>
 
+      {again.data && again.data.products.length > 0 ? <Aisle title="Buy again" products={again.data.products} storeId={storeId} /> : null}
+
       {all.error ? <ErrorBox message={all.error.message} onRetry={all.reload} /> : !all.data ? (
-        <div className="flex gap-2.5"><Skeleton className="h-64 w-[140px]" /><Skeleton className="h-64 w-[140px]" /></div>
-      ) : AISLES.map((ai) => (
-        <Aisle key={ai.title} title={ai.title} see={ai.see} storeId={storeId}
-          products={products.filter((p) => ai.cats.includes(p.category) || ai.extra?.includes(p.productId)).sort((x, y) => Number(y.inStock) - Number(x.inStock)).slice(0, 12)} />
-      ))}
+        <div className="flex gap-3"><Skeleton className="h-72 w-[168px]" /><Skeleton className="h-72 w-[168px]" /></div>
+      ) : (
+        <>
+          <Aisle title={<>Offers for you <span aria-hidden>🔥</span></>} products={offers} storeId={storeId} />
+          {AISLES.map((ai) => (
+            <Aisle key={ai.title} title={ai.title} see={ai.see} storeId={storeId}
+              products={products.filter((p) => ai.cats.includes(p.category) || ai.extra?.includes(p.productId)).sort((x, y) => Number(y.inStock) - Number(x.inStock)).slice(0, 12)} />
+          ))}
+        </>
+      )}
     </div>
   );
 }
 
-function Aisle({ title, products, storeId, see }: { title: string; products: CatalogueProduct[]; storeId: string; see?: string }) {
+function Aisle({ title, products, storeId, see }: { title: React.ReactNode; products: CatalogueProduct[]; storeId: string; see?: string }) {
   if (!products.length) return null;
-  const id = "aisle-" + title.replace(/\W+/g, "-").toLowerCase();
   return (
-    <section aria-labelledby={id} className="space-y-2.5">
+    <section className="space-y-3">
       <div className="flex items-baseline justify-between">
-        <h2 id={id} className="text-lg font-bold tracking-tight">{title}</h2>
-        {see ? <Link href={`/category/${see}`} className="inline-flex min-h-10 items-center text-[13px] font-semibold text-brand">see all</Link> : null}
+        <h2 className="text-[21px] font-bold tracking-tight">{title}</h2>
+        {see ? <Link href={`/category/${see}`} className="inline-flex min-h-10 items-center text-[15px] font-semibold text-brand">See all ›</Link> : null}
       </div>
       <ProductRow products={products} storeId={storeId} />
     </section>

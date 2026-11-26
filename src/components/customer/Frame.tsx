@@ -33,7 +33,7 @@ export function ShopFrame({ children, back, title, sidebar = true, ownHeader = f
       <div className={`mx-auto max-w-6xl px-4 pb-44 pt-4 lg:pb-10 ${sidebar ? "lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-6" : ""}`}>
         <main id="main" className="min-w-0">
           {ready ? <EtaContext.Provider value={eta}>{children(s.storeId!)}</EtaContext.Provider> : <div className="space-y-3"><Skeleton className="h-14" /><Skeleton className="h-20" /><Skeleton className="h-64" /></div>}
-          <p className="mt-10 text-center sm:hidden"><Link href="/demo" className="inline-flex min-h-11 items-center rounded-full border border-dashed border-brand px-4 text-xs font-semibold uppercase tracking-wide text-brand">Demo switcher</Link></p>
+          <p className="mt-10 text-center"><Link href="/demo" className="inline-flex min-h-11 items-center rounded-full border border-dashed border-brand px-4 text-xs font-semibold uppercase tracking-wide text-brand">Demo switcher</Link></p>
         </main>
         {sidebar ? <div><CartSummary /></div> : null}
       </div>

@@ -119,3 +119,10 @@ describe("order journey", () => {
     expect(o.timeline.every((t: any) => t.done)).toBe(true);
   });
 });
+
+describe("search", () => {
+  it("finds products by Tamil names within the selected store", async () => {
+    expect((await search(query, "greenleaf", "அரிசி")).map((p) => p.productId)).toContain("rice-sona-5kg");
+    expect((await search(query, "greenleaf", "தக்காளி")).some((p) => p.groupKey === "tomato")).toBe(true);
+  });
+});

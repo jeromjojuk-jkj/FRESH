@@ -78,6 +78,7 @@ export type CatalogueProduct = {
   mrp: number;
   stock: number;
   inStock: boolean;
+  popular?: boolean;
 };
 
 export type CartLine = { productId: string; qty: number };
