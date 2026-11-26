@@ -1,8 +1,9 @@
 import type { Q } from "./db";
 import { ApiError } from "./http";
 import { distanceMeters, isValidLatLng, isWithinServiceRadius, type LatLng } from "../geo";
-import type { CartLine, Quote, QuoteLine } from "../types";
-import { estimateWindow, getStore, HANDLING_FEE, isOpenNow, storeWorkload } from "./stores";
+import type { CartLine, CouponView, Quote, QuoteLine } from "../types";
+import { activeCoupons, computeCharges, customerContext, evaluateCoupon, PLUS_FREE_DELIVERY_ABOVE, PLUS_PRICE, SMALL_CART_LIMIT } from "./pricing";
+import { estimateWindow, getStore, isOpenNow, storeWorkload } from "./stores";
 import { router } from "./providers/routing";
 
 export function cleanLines(items: unknown): CartLine[] {
@@ -18,13 +19,15 @@ export function cleanLines(items: unknown): CartLine[] {
 }
 
 /** Prices a cart at one store. Used for the cart screen, checkout and the store-switch comparison. */
-export async function quote(q: Q, storeId: string, items: CartLine[], point?: LatLng): Promise<Quote> {
+export type QuoteOptions = { couponCode?: string | null; tip?: number; customerId?: string | null };
+
+export async function quote(q: Q, storeId: string, items: CartLine[], point?: LatLng, opts: QuoteOptions = {}): Promise<Quote> {
   const store = await getStore(q, storeId);
   if (!store) throw new ApiError(404, "STORE_NOT_FOUND", "This store is no longer available.");
   const ids = items.map((i) => i.productId);
   const { rows } = ids.length
     ? await q(
-        `SELECT p.id, p.name, p.pack_label, p.image, sp.price, sp.stock, sp.active
+        `SELECT p.id, p.name, p.pack_label, p.image, p.category, sp.price, sp.mrp, sp.stock, sp.active
          FROM products p LEFT JOIN store_products sp ON sp.product_id=p.id AND sp.store_id=$1
          WHERE p.id = ANY($2::text[])`,
         [storeId, ids],
@@ -45,8 +48,18 @@ export async function quote(q: Q, storeId: string, items: CartLine[], point?: La
   for (const l of lines) if (l.issue) problems.push(`${l.name} (${l.packLabel}): ${l.issue}`);
   const ok = lines.filter((l) => l.available);
   const subtotal = ok.reduce((s, l) => s + l.lineTotal, 0);
-  const deliveryFee = subtotal === 0 || subtotal >= store.free_delivery_above ? 0 : store.delivery_fee;
-  const handlingFee = subtotal === 0 ? 0 : HANDLING_FEE;
+  const mrpTotal = ok.reduce((s, l) => s + (byId.get(l.productId)?.mrp ?? l.price) * l.qty, 0);
+  const byCategory: Record<string, number> = {};
+  for (const l of ok) { const cat = byId.get(l.productId)?.category; if (cat) byCategory[cat] = (byCategory[cat] ?? 0) + l.lineTotal; }
+
+  // Offers and fees, all shown before payment.
+  const ctx = await customerContext(q, opts.customerId);
+  const base = computeCharges({ subtotal, storeDeliveryFee: store.delivery_fee, storeFreeAbove: store.free_delivery_above, isPlus: ctx.isPlus, coupon: null, tip: 0 });
+  const coupons = (await activeCoupons(q)).map((c) => evaluateCoupon(c, { subtotal, byCategory, deliveryFee: base.deliveryBeforeCoupon }, ctx));
+  const code = (opts.couponCode ?? "").trim().toUpperCase();
+  let coupon: CouponView | null = null;
+  if (code) coupon = coupons.find((c) => c.code === code) ?? { code, title: code, description: "", eligible: false, reason: "This code isn’t valid.", discount: 0, waivesDelivery: false };
+  const ch = computeCharges({ subtotal, storeDeliveryFee: store.delivery_fee, storeFreeAbove: store.free_delivery_above, isPlus: ctx.isPlus, coupon, tip: opts.tip ?? 0 });
 
   let etaMin = 0, etaMax = 0;
   if (point && isValidLatLng(point)) {
@@ -60,7 +73,12 @@ export async function quote(q: Q, storeId: string, items: CartLine[], point?: La
   else if (!store.accepting_orders) problems.unshift(`${store.name} has paused new orders.`);
 
   return {
-    storeId, storeName: store.name, lines, subtotal, deliveryFee, freeDeliveryAbove: store.free_delivery_above, handlingFee,
-    total: subtotal + deliveryFee + handlingFee, itemCount: ok.reduce((s, l) => s + l.qty, 0), problems, etaMin, etaMax,
+    storeId, storeName: store.name, lines, subtotal, mrpTotal,
+    deliveryFee: ch.deliveryFee, deliveryBeforeCoupon: ch.deliveryBeforeCoupon,
+    freeDeliveryAbove: ctx.isPlus ? Math.min(PLUS_FREE_DELIVERY_ABOVE, store.free_delivery_above) : store.free_delivery_above,
+    handlingFee: ch.handlingFee, smallCartFee: ch.smallCartFee, smallCartLimit: SMALL_CART_LIMIT,
+    discount: ch.discount, coupon, coupons, tip: ch.tip, isPlus: ctx.isPlus, plusPrice: PLUS_PRICE,
+    total: ch.total, savings: Math.max(0, mrpTotal - subtotal) + ch.discount + (ch.deliveryBeforeCoupon - ch.deliveryFee),
+    itemCount: ok.reduce((s, l) => s + l.qty, 0), problems, etaMin, etaMax,
   };
 }

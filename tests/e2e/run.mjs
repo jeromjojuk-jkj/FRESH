@@ -275,6 +275,56 @@ await check("CSV import preview preserves barcode leading zeros and is store-sco
   return "0012345678905 kept; bad row rejected; Greenleaf can't see Annapurna's import";
 });
 
+// New ─ quick-commerce features
+await check("Coupons, tip, transparent fees, cancel before packing, account and policy pages", async () => {
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const page = await ctx.newPage();
+  await onboard(page);
+  const adds = page.getByRole("button", { name: /^Add .* to cart$/ });
+  for (let i = 0; i < 4; i++) await adds.first().click();
+  await page.goto(BASE + "/cart");
+  await page.getByText("Bill details").waitFor();
+  await page.getByRole("button", { name: /Apply coupon/ }).click();
+  await page.getByRole("dialog", { name: "Coupons" }).waitFor();
+  await page.screenshot({ path: `${SHOTS}/cart-coupons-390.png` });
+  await page.fill("#coupon-code", "WELCOME50");
+  await page.getByRole("button", { name: "Apply", exact: true }).first().click();
+  await page.getByText(/WELCOME50 (applied|can’t be used)/).waitFor();
+  const applied = await page.getByText("WELCOME50 applied").count();
+  if (!applied) await page.getByRole("button", { name: "Remove" }).click();
+  await page.getByRole("radio", { name: "₹20" }).click();
+  await page.getByText("Delivery partner tip").waitFor();
+  await page.getByRole("button", { name: "What is the handling charge?" }).click();
+  await page.getByText("A flat charge for picking and packing").waitFor();
+  await page.screenshot({ path: `${SHOTS}/cart-bill-390.png`, fullPage: true });
+  await page.getByTestId("place-order").click();
+  await page.waitForURL(/\/orders\/NB-\d+/, { timeout: 15000 });
+  const code = page.url().split("/").pop();
+  const order = (await (await ctx.request.get(`${BASE}/api/v1/orders/${code}`)).json()).order;
+  assert(order.tip === 2000, `tip ${order.tip}`);
+  if (applied) assert(order.discount > 0, "coupon discount missing");
+  await page.getByRole("button", { name: "Cancel order" }).first().click();
+  await page.getByLabel("Ordered by mistake").check();
+  await page.getByRole("dialog").getByRole("button", { name: "Cancel order" }).click();
+  await page.getByText("Order cancelled").waitFor({ timeout: 10000 });
+  await page.screenshot({ path: `${SHOTS}/order-cancelled-390.png`, fullPage: true });
+  await page.goto(BASE + "/account"); await page.getByText("KripFresh Plus").first().waitFor();
+  await page.getByRole("button", { name: /Join for/ }).click(); await page.getByText(/Renews on/).waitFor();
+  await page.screenshot({ path: `${SHOTS}/account-390.png`, fullPage: true });
+  const bad = [];
+  for (const [w, h] of [[360, 740], [1280, 860]]) {
+    await page.setViewportSize({ width: w, height: h });
+    for (const path of ["/account", "/help", "/legal/terms", "/legal/refunds", "/search", "/cart"]) {
+      await page.goto(BASE + path); await page.waitForTimeout(500);
+      if (!(await noHScroll(page))) bad.push(`${path}@${w}`);
+    }
+  }
+  await page.screenshot({ path: `${SHOTS}/legal-desktop.png` });
+  assert(!bad.length, `overflow: ${bad.join(", ")}`);
+  await ctx.close();
+  return `${code}: ${applied ? "WELCOME50 applied, " : ""}₹20 tip, cancelled before packing; Plus joined; 6 pages × 2 widths`;
+});
+
 await browser.close();
 const failed = results.filter((r) => !r.ok);
 fs.writeFileSync("test-results/e2e-results.json", JSON.stringify(results, null, 2));

@@ -96,15 +96,36 @@ export type QuoteLine = {
   issue?: string;
 };
 
+export type CouponView = {
+  code: string;
+  title: string;
+  description: string;
+  eligible: boolean;
+  reason?: string;
+  discount: number;          // paise off (for free delivery: the fee waived)
+  waivesDelivery: boolean;
+};
+
 export type Quote = {
   storeId: string;
   storeName: string;
   lines: QuoteLine[];
-  subtotal: number;
+  subtotal: number;          // items at selling price
+  mrpTotal: number;          // items at MRP, to show savings
   deliveryFee: number;
+  deliveryBeforeCoupon: number;
   freeDeliveryAbove: number;
   handlingFee: number;
+  smallCartFee: number;
+  smallCartLimit: number;
+  discount: number;          // coupon discount on items
+  coupon: CouponView | null; // the coupon applied (or the reason it can't be)
+  coupons: CouponView[];     // every active coupon, with eligibility
+  tip: number;
+  isPlus: boolean;
+  plusPrice: number;
   total: number;
+  savings: number;           // MRP savings + coupon + waived delivery
   itemCount: number;
   problems: string[];
   etaMin: number;

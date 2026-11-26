@@ -10,7 +10,8 @@ import { rupees } from "@/lib/money";
 import type { CatalogueProduct } from "@/lib/types";
 import { CustomerHeader } from "@/components/customer/Shell";
 import { RouteMotif } from "@/components/RouteMotif";
-import { Button, ErrorBox, Notice, Skeleton } from "@/components/ui";
+import { Button, ErrorBox, Notice, Sheet, Skeleton } from "@/components/ui";
+import { OrderAgain } from "@/components/customer/OrderAgain";
 import { IconAlert, IconCheck, IconClock, IconPhone, IconPin, IconStore } from "@/components/icons";
 
 const MapView = dynamic(() => import("@/components/MapView").then((m) => m.MapView), { ssr: false, loading: () => <div className="h-56 animate-pulse rounded-[var(--radius-card)] bg-mint" /> });
@@ -62,12 +63,19 @@ function Tracking({ o, now, reload }: { o: any; now: number; reload: () => void 
   return (
     <>
       {/* Arrival window first */}
-      <section className={`rounded-[var(--radius-card)] p-5 ${o.status === "declined" ? "bg-danger-bg" : "bg-mint"}`} aria-live="polite">
+      <section className={`rounded-[var(--radius-card)] p-5 ${o.status === "declined" || o.status === "cancelled" ? "bg-danger-bg" : "bg-mint"}`} aria-live="polite">
         {o.status === "delivered" ? (
           <>
             <p className="text-sm font-semibold text-brand">Delivered</p>
             <p className="text-2xl font-bold">at {timeIST(o.timeline.find((t: any) => t.status === "delivered")?.at ?? o.lastUpdateAt)}</p>
             <p className="mt-1 text-sm">Thank you for shopping at {o.store.name}.</p>
+          </>
+        ) : o.status === "cancelled" ? (
+          <>
+            <p className="text-sm font-semibold text-danger">Order cancelled</p>
+            <p className="mt-1 text-base font-semibold">{o.cancelReason}</p>
+            <p className="mt-1 text-sm">{o.paymentStatus === "paid" ? `A full refund of ${rupees(o.total)} has been started (simulated).` : "You have not been charged."}</p>
+            <OrderAgain o={o} className="mt-3" />
           </>
         ) : o.status === "declined" ? (
           <>
@@ -161,14 +169,130 @@ function Tracking({ o, now, reload }: { o: any; now: number; reload: () => void 
         </ul>
         <dl className="mt-2 space-y-1 border-t border-line pt-2">
           <div className="flex justify-between"><dt>Item total</dt><dd>{rupees(o.subtotal)}</dd></div>
+          {o.discount ? <div className="flex justify-between font-semibold text-brand"><dt>Coupon {o.couponCode}</dt><dd>−{rupees(o.discount)}</dd></div> : null}
           <div className="flex justify-between"><dt>Delivery fee</dt><dd>{o.deliveryFee ? rupees(o.deliveryFee) : "Free"}</dd></div>
           <div className="flex justify-between"><dt>Handling charge</dt><dd>{rupees(o.handlingFee)}</dd></div>
+          {o.smallCartFee ? <div className="flex justify-between"><dt>Small cart fee</dt><dd>{rupees(o.smallCartFee)}</dd></div> : null}
+          {o.tip ? <div className="flex justify-between"><dt>Delivery partner tip</dt><dd>{rupees(o.tip)}</dd></div> : null}
           <div className="flex justify-between text-base font-bold"><dt>Total</dt><dd>{rupees(o.total)}</dd></div>
           <div className="flex justify-between text-xs text-ink-2"><dt>Payment</dt><dd>{o.paymentMethod === "cod" ? (o.paymentStatus === "paid" ? "Cash on delivery · paid" : "Cash on delivery") : "UPI (simulated) · paid"}</dd></div>
           <div className="flex justify-between text-xs text-ink-2"><dt>If unavailable</dt><dd>{o.substitutionPref === "contact" ? "Contact me" : "Remove item"}</dd></div>
         </dl>
       </section>
+
+      <AfterOrder o={o} reload={reload} />
     </>
+  );
+}
+
+const CANCEL_REASONS = ["Ordered by mistake", "Want to change items", "Delivery is taking too long", "Found a better price", "Other"];
+const ISSUES: [string, string][] = [["missing", "Item missing"], ["damaged", "Item damaged or spilled"], ["wrong", "Wrong item delivered"], ["quality", "Poor quality or expired"], ["late", "Delivery was very late"], ["other", "Something else"]];
+
+/** Cancel (before packing), rate, get help, order again. */
+function AfterOrder({ o, reload }: { o: any; reload: () => void }) {
+  const [sheet, setSheet] = useState<null | "cancel" | "help">(null);
+  const [reason, setReason] = useState("");
+  const [kind, setKind] = useState("missing");
+  const [picked, setPicked] = useState<number[]>([]);
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [stars, setStars] = useState<number>(o.rating ?? 0);
+
+  const post = async (path: string, json: object, done: (r: any) => void) => {
+    setBusy(true); setErr(null);
+    try { const r = await api(`/orders/${o.code}/${path}`, { method: "POST", json }); done(r); reload(); }
+    catch (e: any) { setErr(e.message); } finally { setBusy(false); }
+  };
+  const itemIssue = ["missing", "damaged", "wrong", "quality"].includes(kind);
+  const delivered = o.status === "delivered";
+  if (!o.canCancel && !delivered && !o.tickets?.length) return null;
+
+  return (
+    <section aria-labelledby="after-h" className="space-y-3 rounded-[var(--radius-card)] border border-line p-4">
+      <h2 id="after-h" className="text-base font-semibold">{delivered ? "How was your order?" : "Need to change something?"}</h2>
+      {msg ? <Notice>{msg}</Notice> : null}
+      {o.canCancel ? (
+        <div className="space-y-2 text-sm">
+          <p className="text-ink-2">You can cancel until the store starts packing. {o.paymentStatus === "paid" ? "You’ll get a full refund." : "You won’t be charged."}</p>
+          <Button variant="danger" onClick={() => setSheet("cancel")}>Cancel order</Button>
+        </div>
+      ) : null}
+      {delivered ? (
+        <>
+          <div>
+            <p className="mb-1 text-sm text-ink-2">Rate your delivery</p>
+            <div className="flex gap-1" role="radiogroup" aria-label="Rating">
+              {[1, 2, 3, 4, 5].map((n) => (
+                <button key={n} type="button" role="radio" aria-checked={stars === n} aria-label={`${n} star${n > 1 ? "s" : ""}`} disabled={busy}
+                  onClick={() => { setStars(n); post("rate", { stars: n }, () => setMsg("Thanks for rating your delivery.")); }}
+                  className={`grid h-11 w-11 place-items-center rounded-xl text-2xl ${n <= stars ? "text-[#E2A319]" : "text-line"} hover:bg-tile`}>★</button>
+              ))}
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <OrderAgain o={o} />
+            {o.canReportIssue ? <Button variant="secondary" onClick={() => { setSheet("help"); setPicked([]); setNote(""); }}>Get help with this order</Button> : null}
+          </div>
+          {!o.canReportIssue ? <p className="text-xs text-ink-2">Problems can be reported within 48 hours of delivery. After that, contact <Link href="/help" className="font-semibold text-brand underline">Help &amp; support</Link>.</p> : null}
+        </>
+      ) : null}
+      {o.tickets?.length ? (
+        <div className="space-y-2">
+          <h3 className="text-sm font-semibold">Your support requests</h3>
+          {o.tickets.map((t: any) => (
+            <div key={t.id} className="rounded-xl bg-tile p-3 text-sm">
+              <p className="flex justify-between gap-2"><b>#{t.id} · {ISSUES.find((x) => x[0] === t.kind)?.[1]}</b>
+                <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${t.status === "refund_approved" ? "bg-offbg text-brand" : "bg-warn-bg text-warn"}`}>{t.status === "refund_approved" ? `Refund ${rupees(t.refundAmount)} approved` : "In review"}</span></p>
+              {t.items?.length ? <p className="text-ink-2">{t.items.map((i: any) => i.name).join(", ")}</p> : null}
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      <Sheet open={sheet === "cancel"} onClose={() => setSheet(null)} title={`Cancel ${o.code}?`}
+        footer={<><Button variant="danger" busy={busy} disabled={!reason} onClick={() => post("cancel", { reason }, () => { setSheet(null); setMsg("Your order is cancelled."); })}>Cancel order</Button><Button variant="ghost" onClick={() => setSheet(null)}>Keep my order</Button></>}>
+        <fieldset className="space-y-2">
+          <legend className="mb-2 text-sm">Why are you cancelling?</legend>
+          {CANCEL_REASONS.map((r) => (
+            <label key={r} className={`flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border-2 px-3 text-sm font-medium ${reason === r ? "border-brand bg-mint" : "border-line"}`}>
+              <input type="radio" name="cancel-reason" checked={reason === r} onChange={() => setReason(r)} className="h-5 w-5 accent-[#1C9A41]" />{r}
+            </label>
+          ))}
+        </fieldset>
+        {err ? <div className="mt-3"><ErrorBox compact message={err} /></div> : null}
+      </Sheet>
+
+      <Sheet open={sheet === "help"} onClose={() => setSheet(null)} title="What went wrong?"
+        footer={<Button busy={busy} disabled={itemIssue && !picked.length} onClick={() => post("issues", { kind, itemIds: picked, note }, (r) => { setSheet(null); setMsg(r.result.refund ? `Refund of ${rupees(r.result.refund)} approved. It goes back to your original payment method (simulated).` : `Request #${r.result.ticketId} received. We’ll reply within 24 hours.`); })}>Submit</Button>}>
+        <div className="space-y-4 text-sm">
+          <fieldset className="grid gap-2">
+            <legend className="sr-only">Problem</legend>
+            {ISSUES.map(([k, l]) => (
+              <label key={k} className={`flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border-2 px-3 font-medium ${kind === k ? "border-brand bg-mint" : "border-line"}`}>
+                <input type="radio" name="issue-kind" checked={kind === k} onChange={() => setKind(k)} className="h-5 w-5 accent-[#1C9A41]" />{l}
+              </label>
+            ))}
+          </fieldset>
+          {itemIssue ? (
+            <fieldset className="grid gap-2">
+              <legend className="mb-1 font-semibold">Which items?</legend>
+              {o.items.filter((i: any) => i.qty > i.removedQty).map((i: any) => (
+                <label key={i.id} className="flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border border-line px-3">
+                  <input type="checkbox" checked={picked.includes(i.id)} onChange={(e) => setPicked(e.target.checked ? [...picked, i.id] : picked.filter((x) => x !== i.id))} className="h-5 w-5 accent-[#1C9A41]" />
+                  <span className="flex-1">{i.name} <b>{i.packLabel}</b> × {i.qty - i.removedQty}</span><span>{rupees(i.price * (i.qty - i.removedQty))}</span>
+                </label>
+              ))}
+            </fieldset>
+          ) : null}
+          <label className="block"><span className="mb-1 block font-medium">Anything else? (optional)</span>
+            <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} className="w-full rounded-xl border-2 border-line p-3 focus:border-brand focus:outline-none" /></label>
+          <p className="text-xs text-ink-2">Item refunds up to ₹500 are approved straight away and go back to your original payment method (simulated). Other requests are reviewed within 24 hours.</p>
+          {err ? <ErrorBox compact message={err} /> : null}
+        </div>
+      </Sheet>
+    </section>
   );
 }
 

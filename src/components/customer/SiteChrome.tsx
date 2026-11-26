@@ -6,7 +6,7 @@ import { useHydrated } from "@/lib/client/hooks";
 import { rupees } from "@/lib/money";
 import { CATEGORIES, type StoreSummary } from "@/lib/types";
 import { Logo } from "../Logo";
-import { IconBag, IconChevron, IconClock, IconList, IconPin } from "../icons";
+import { IconBag, IconChevron, IconClock, IconList, IconPin, IconUser } from "../icons";
 import { SearchBox } from "./SearchBox";
 import { useNearbyStores } from "./useStores";
 
@@ -45,6 +45,7 @@ export function SiteHeader({ storeId: sid, store: given }: { storeId?: string; s
         </Link>
         <div className="min-w-0 flex-1">{storeId ? <SearchBox storeId={storeId} compact /> : null}</div>
         <Link href="/orders" className="inline-flex min-h-12 shrink-0 items-center gap-2 rounded-xl px-3 text-sm font-semibold hover:bg-mint"><IconList className="h-5 w-5 text-brand" />Orders</Link>
+        <Link href="/account" className="inline-flex min-h-12 shrink-0 items-center gap-2 rounded-xl px-3 text-sm font-semibold hover:bg-mint"><IconUser className="h-5 w-5 text-brand" />Account</Link>
         <Link href="/cart" className="inline-flex min-h-12 shrink-0 items-center gap-2.5 rounded-xl bg-brand px-4 text-white hover:bg-brand-dark" aria-label={`Cart, ${t.count} items, ${rupees(t.subtotal)}`}>
           <IconBag className="h-5 w-5" />
           <span className="leading-tight">{t.count ? <><span className="block text-[11px] font-medium text-white/90">{t.count} item{t.count > 1 ? "s" : ""}</span><span className="block text-sm font-bold">{rupees(t.subtotal)}</span></> : <span className="text-sm font-semibold">My cart</span>}</span>
@@ -90,6 +91,8 @@ export function SiteFooter() {
             <li><Link href="/cart" className="hover:text-brand">Cart</Link></li>
             <li><Link href="/address" className="hover:text-brand">Delivery address</Link></li>
             <li><Link href="/stores" className="hover:text-brand">Choose a store</Link></li>
+            <li><Link href="/account" className="hover:text-brand">Account &amp; Plus</Link></li>
+            <li><Link href="/help" className="hover:text-brand">Help &amp; support</Link></li>
           </ul>
         </div>
         <div>
@@ -102,7 +105,12 @@ export function SiteFooter() {
           <p className="mt-4 text-xs text-ink-2">Payments: cash on delivery, UPI (simulated in this demo).</p>
         </div>
       </div>
-      <p className="border-t border-line px-4 py-4 text-center text-xs text-ink-2">© {new Date().getFullYear()} KripFresh · Demo website with fictional stores. No real orders are placed.</p>
+      <div className="border-t border-line px-4 py-4 text-center text-xs text-ink-2">
+        <nav aria-label="Policies" className="mb-2 flex flex-wrap justify-center gap-x-4 gap-y-1">
+          {[["terms", "Terms of use"], ["privacy", "Privacy"], ["refunds", "Refunds & cancellation"], ["delivery", "Delivery policy"], ["grievance", "Grievance officer"]].map(([k, l]) => <Link key={k} href={`/legal/${k}`} className="hover:text-brand">{l}</Link>)}
+        </nav>
+        © {new Date().getFullYear()} KripFresh · Demo website with fictional stores. No real orders are placed.
+      </div>
     </footer>
   );
 }
