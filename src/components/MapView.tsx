@@ -80,9 +80,9 @@ export function MapView({ markers, route, draggablePin, className = "", label, o
       pin.on("dragend", () => { const ll = pin.getLatLng(); dragRef.current?.onMove({ lat: ll.lat, lng: ll.lng }); });
       pts.push([dp.pos.lat, dp.pos.lng]);
     }
-    if (dp && pts.length === 1) m.setView(pts[0], 17);
-    else if (pts.length === 1) m.setView(pts[0], 16);
-    else if (pts.length > 1) m.fitBounds(pts, { padding: [36, 36], maxZoom: 16 });
+    if (dp && pts.length === 1) m.setView(pts[0], 17, { animate: false });
+    else if (pts.length === 1) m.setView(pts[0], 16, { animate: false });
+    else if (pts.length > 1) m.fitBounds(pts, { padding: [36, 36], maxZoom: 16, animate: false });
   };
 
   const key = JSON.stringify([markers, route, draggablePin?.pos]);
