@@ -306,6 +306,8 @@ export async function listStoreOrders(storeId: string, view: "new" | "active" | 
        o.substitution_pref AS "substitutionPref", o.payment_method AS "paymentMethod",
        (SELECT sum(qty - removed_qty)::int FROM order_items WHERE order_id=o.id) AS "itemCount",
        (SELECT count(*)::int FROM order_items WHERE order_id=o.id AND status='short') AS "waitingOnCustomer",
+       (SELECT json_agg(json_build_object('productId', product_id, 'name', name, 'packLabel', pack_label, 'image', image, 'qty', qty) ORDER BY id)
+          FROM order_items WHERE order_id=o.id) AS items,
        r.name AS "riderName", s.prep_minutes AS "prepMinutes"
      FROM orders o JOIN stores s ON s.id=o.store_id LEFT JOIN riders r ON r.id=o.rider_id
      WHERE o.store_id=$1 AND o.status = ANY($2::text[]) ORDER BY o.created_at ${view === "done" ? "DESC LIMIT 30" : "ASC"}`,

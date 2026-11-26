@@ -51,7 +51,7 @@ export default function ImportPage() {
       <Notice>Barcodes are kept exactly as written, including leading zeros (e.g. 0200000000011). In Excel, format the barcode column as <strong>Text</strong> before typing.</Notice>
       <a href={`data:text/csv;charset=utf-8,${encodeURIComponent(TEMPLATE)}`} download="kripfresh-import-template.csv" className="inline-flex min-h-11 items-center font-semibold text-brand underline">Download a sample CSV</a>
 
-      <label className="flex min-h-28 cursor-pointer flex-col items-center justify-center gap-2 rounded-[var(--radius-card)] border-2 border-dashed border-brand bg-mint/50 p-4 text-center hover:bg-mint">
+      <label className="flex min-h-28 cursor-pointer flex-col items-center justify-center gap-2 rounded-[22px] border-2 border-dashed border-brand bg-mint p-4 text-center hover:bg-mint">
         <IconUpload className="h-7 w-7 text-brand" />
         <span className="font-semibold">{file ? file.name : "Choose a CSV or Excel file"}</span>
         <span className="text-xs text-ink-2">Up to 5 MB · first sheet is used</span>

@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/client/api";
 import { useApi } from "@/lib/client/hooks";
+import { tintFor } from "@/components/customer/ProductCard";
 import { rupees } from "@/lib/money";
 import { ErrorBox, Skeleton, inputCls } from "@/components/ui";
 import { IconCheck, IconMinus, IconPlus, IconSearch } from "@/components/icons";
@@ -45,10 +46,10 @@ function StockRow({ it }: { it: any }) {
   };
 
   return (
-    <li className={`rounded-2xl border p-3 ${stock === 0 ? "border-warn bg-warn-bg/40" : "border-line"}`}>
+    <li className={`rounded-[22px] p-3 ${stock === 0 ? "bg-warn-bg/60 ring-1 ring-warn" : "bg-white shadow-[0_4px_18px_-10px_rgba(0,0,0,.25)]"}`}>
       <div className="flex items-center gap-3">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={it.image} alt="" className="h-12 w-12 shrink-0 rounded-xl bg-mint object-contain p-1" />
+        <img src={it.image} alt="" className={`h-12 w-12 shrink-0 rounded-[14px] object-contain p-1.5 ${tintFor(it.productId)}`} />
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold">{it.name} <span className="rounded bg-mint px-1.5 text-xs">{it.packLabel}</span></p>
           <p className="text-xs text-ink-2">Barcode {it.barcode ?? "—"} · MRP {rupees(it.mrp)}{stock === 0 ? <strong className="ml-1 text-warn">· Out of stock</strong> : null}</p>

@@ -35,7 +35,7 @@ export default function SettingsPage() {
         <span><span className="block font-semibold">{f.acceptingOrders ? "Accepting orders" : "Not accepting orders"}</span><span className="block text-xs text-ink-2">Turn off to pause new orders. Orders in progress are not affected.</span></span>
       </label>
 
-      <fieldset className="space-y-3 rounded-2xl border border-line p-4">
+      <fieldset className="space-y-3 rounded-[22px] bg-white p-4 shadow-[0_4px_18px_-10px_rgba(0,0,0,.25)]">
         <legend className="px-1 font-semibold">Opening hours</legend>
         <label className="flex min-h-11 items-center gap-2 text-sm font-medium"><input type="checkbox" checked={f.is24} onChange={(e) => setF({ ...f, is24: e.target.checked, openTime: e.target.checked ? f.openTime : "07:00", closeTime: e.target.checked ? f.closeTime : "22:00" })} className="h-5 w-5 accent-[#1C9A41]" /> Open 24 hours</label>
         {!f.is24 ? (
@@ -47,7 +47,7 @@ export default function SettingsPage() {
       </fieldset>
 
       {[["prepMinutes", "Preparation time", "minutes to pack a typical order", 2, 90], ["maxActiveOrders", "Order capacity", "orders being packed at once before new orders pause", 1, 200]].map(([k, label, hint, min, max]) => (
-        <div key={k as string} className="rounded-2xl border border-line p-4">
+        <div key={k as string} className="rounded-[22px] bg-white p-4 shadow-[0_4px_18px_-10px_rgba(0,0,0,.25)]">
           <p className="font-semibold" id={`${k}-l`}>{label as string}</p>
           <p className="mb-2 text-xs text-ink-2">{f[k as string]} {hint as string}</p>
           <div className="flex h-12 w-fit items-stretch overflow-hidden rounded-xl border-2 border-brand" role="group" aria-labelledby={`${k}-l`}>
