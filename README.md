@@ -59,6 +59,16 @@ All demo stores are set to open 24 hours so the demo works at any time. Change h
 
 Without `DATABASE_URL` the app refuses to start on Vercel, because serverless instances don't share a disk and the embedded database would lose orders. Every push to `main` then deploys automatically.
 
+## Quick-commerce features
+
+- **Transparent bill:** item total (with MRP savings), coupon, delivery fee (free above each store’s limit), ₹5 handling charge, ₹15 small-cart fee under ₹99 and any tip. Each fee has an ⓘ explanation. Nothing is added after checkout, nothing optional is pre-selected, and a total can only go down after the order is placed.
+- **Coupons** (`coupons` table): first-order, minimum-value, category and members-only rules, checked on the server. An ineligible coupon is refused at checkout, never silently dropped.
+- **Delivery partner tip:** ₹10, ₹20, ₹30 or a custom amount up to ₹200, shown to the rider.
+- **KripFresh Plus** (payment simulated): free delivery above ₹99, no small-cart fee and a members-only coupon. Cancelling stops renewal, and benefits last until the end of the period.
+- **After ordering:** cancel before the store starts packing (stock is returned); rate the delivery; report missing, damaged, wrong or poor-quality items within 48 hours (refunds up to ₹500 are approved automatically and simulated); order again.
+- **Account, Help & support and policy pages** (`/account`, `/help`, `/legal/*`). The policies are KripFresh’s own templates with placeholder company details. Have a lawyer review them before launch.
+- **Search:** recent searches (saved on the device) and trending searches.
+
 ## Key rules, and where they live
 
 - **3 km rule:** `src/lib/geo.ts`. The server computes straight-line distance with the haversine formula, to the whole metre. A store is eligible when the distance is ≤ 3,000 m, so 3.00 km is in and 3.01 km is out. Road travel time is estimated separately (`providers/routing.ts`) and used only for delivery estimates.

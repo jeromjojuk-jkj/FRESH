@@ -3,9 +3,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cart, cartTotals } from "@/lib/client/store";
 import { useHydrated } from "@/lib/client/hooks";
-import { IconBag, IconGrid, IconHome, IconList, IconSearch } from "../icons";
+import { IconBag, IconGrid, IconHome, IconSearch, IconUser } from "../icons";
 
-/** Phone bottom bar: Home · Categories · (Search) · Cart · Orders. */
+/** Phone bottom bar: Home · Categories · (Search) · Cart · Account. */
 export function BottomNav() {
   const path = usePathname();
   const c = cart.use();
@@ -31,7 +31,7 @@ export function BottomNav() {
             {count ? <span className="absolute -right-3 -top-2 min-w-[18px] rounded-full bg-heart px-1 text-center text-[10px] font-bold leading-[18px] text-white">{count}</span> : null}
           </span>
         ), path === "/cart")}
-        {item("/orders", "Orders", <IconList className="h-6 w-6" />, path.startsWith("/orders"))}
+        {item("/account", "Account", <IconUser className="h-6 w-6" />, ["/account", "/orders", "/help"].some((x) => path.startsWith(x)))}
       </div>
     </nav>
   );

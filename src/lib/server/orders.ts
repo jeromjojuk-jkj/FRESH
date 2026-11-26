@@ -6,6 +6,7 @@ import { distanceMeters, isValidLatLng, isWithinServiceRadius } from "../geo";
 import { estimateWindow, getStore, isOpenNow, storeWorkload, type StoreRow } from "./stores";
 import { router } from "./providers/routing";
 import { paymentProvider } from "./providers/payments";
+import { MAX_TIP } from "./pricing";
 import { notifyCustomer } from "./providers/notify";
 import { rupees } from "../money";
 import { ORDER_TIMELINE, STATUS_LABEL, type DeliveryAddress, type OrderStatus } from "../types";
@@ -39,8 +40,12 @@ async function recomputeTotals(q: Q, order: any) {
   const subtotal = rows[0].sub as number;
   const deliveryFee = subtotal === 0 ? 0 : order.delivery_fee;
   const handlingFee = subtotal === 0 ? 0 : order.handling_fee;
-  const total = subtotal + deliveryFee + handlingFee;
-  await q(`UPDATE orders SET subtotal=$2, delivery_fee=$3, handling_fee=$4, total=$5, updated_at=now() WHERE id=$1`, [order.id, subtotal, deliveryFee, handlingFee, total]);
+  // Fees and the coupon can only stay the same or go down, never up.
+  const smallCartFee = subtotal === 0 ? 0 : order.small_cart_fee;
+  const discount = Math.min(order.discount, subtotal);
+  const tip = subtotal === 0 ? 0 : order.tip;
+  const total = subtotal - discount + deliveryFee + handlingFee + smallCartFee + tip;
+  await q(`UPDATE orders SET subtotal=$2, delivery_fee=$3, handling_fee=$4, total=$5, small_cart_fee=$6, discount=$7, tip=$8, updated_at=now() WHERE id=$1`, [order.id, subtotal, deliveryFee, handlingFee, total, smallCartFee, discount, tip]);
   const diff = total - order.total;
   if (diff < 0 && order.payment_status === "paid") await notice(q, order.id, `Your total dropped by ${rupees(-diff)}. A refund of ${rupees(-diff)} has been started (simulated payment).`);
   return { subtotal, total, diff };
@@ -109,6 +114,8 @@ export type PlaceOrderInput = {
   paymentMethod: "cod" | "upi_demo";
   paymentRef?: string;
   expectedTotal: number;
+  couponCode?: string | null;
+  tip?: number;
 };
 
 /**
@@ -146,7 +153,10 @@ export async function placeOrder(customerId: string, input: PlaceOrderInput): Pr
       const workload = await storeWorkload(q, store.id);
       if (workload.active >= store.max_active_orders) throw new ApiError(409, "AT_CAPACITY", `${store.name} is very busy and cannot take new orders for a few minutes.`);
 
-      const qt = await quote(q, store.id, items);
+      const tip = Math.round(Number(input.tip ?? 0));
+      if (!Number.isFinite(tip) || tip < 0 || tip > MAX_TIP) throw new ApiError(400, "BAD_TIP", "Choose a tip between ₹0 and ₹200.");
+      const qt = await quote(q, store.id, items, undefined, { couponCode: input.couponCode, tip, customerId });
+      if (input.couponCode && !qt.coupon?.eligible) throw new ApiError(409, "COUPON_INVALID", `Coupon ${String(input.couponCode).toUpperCase()} can’t be used: ${qt.coupon?.reason ?? "not valid"}`, { quote: qt });
       const unavailable = qt.lines.filter((l) => !l.available);
       if (unavailable.length) throw new ApiError(409, "ITEMS_UNAVAILABLE", `Sorry, ${unavailable.map((l) => `${l.name} (${l.packLabel})`).join(", ")} ${unavailable.length > 1 ? "are" : "is"} no longer available in that quantity.`, { quote: qt });
       const clientPrice = new Map(input.items.map((i) => [i.productId, i.price]));
@@ -170,9 +180,10 @@ export async function placeOrder(customerId: string, input: PlaceOrderInput): Pr
         flat: addr.flat?.slice(0, 60), floor: addr.floor?.slice(0, 30), landmark: addr.landmark?.slice(0, 100), instructions: addr.instructions?.slice(0, 200), label: addr.label?.slice(0, 30), phone: addr.phone?.replace(/[^\d+ ]/g, "").slice(0, 20),
       };
       await q(
-        `INSERT INTO orders (id,code,idempotency_key,customer_id,store_id,status,address,lat,lng,distance_m,substitution_pref,payment_method,payment_status,payment_ref,subtotal,delivery_fee,handling_fee,total,eta_min_at,eta_max_at)
-         VALUES ($1,$2,$3,$4,$5,'placed',$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17, now() + ($18 || ' minutes')::interval, now() + ($19 || ' minutes')::interval)`,
-        [id, code, key, customerId, store.id, JSON.stringify(cleanAddr), addr.lat, addr.lng, Math.round(dist), input.substitutionPref, pay.method, payment.status, payment.ref, qt.subtotal, qt.deliveryFee, qt.handlingFee, qt.total, String(w.min), String(w.max)],
+        `INSERT INTO orders (id,code,idempotency_key,customer_id,store_id,status,address,lat,lng,distance_m,substitution_pref,payment_method,payment_status,payment_ref,subtotal,delivery_fee,handling_fee,total,eta_min_at,eta_max_at,small_cart_fee,discount,coupon_code,tip,plus_applied)
+         VALUES ($1,$2,$3,$4,$5,'placed',$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17, now() + ($18 || ' minutes')::interval, now() + ($19 || ' minutes')::interval,$20,$21,$22,$23,$24)`,
+        [id, code, key, customerId, store.id, JSON.stringify(cleanAddr), addr.lat, addr.lng, Math.round(dist), input.substitutionPref, pay.method, payment.status, payment.ref, qt.subtotal, qt.deliveryFee, qt.handlingFee, qt.total, String(w.min), String(w.max),
+         qt.smallCartFee, qt.discount, qt.coupon?.eligible ? qt.coupon.code : null, qt.tip, qt.isPlus],
       );
       for (const l of qt.lines) {
         await q(`INSERT INTO order_items (order_id,product_id,name,pack_label,image,price,qty) VALUES ($1,$2,$3,$4,$5,$6,$7)`, [id, l.productId, l.name, l.packLabel, l.image, l.price, l.qty]);
@@ -193,6 +204,9 @@ export async function placeOrder(customerId: string, input: PlaceOrderInput): Pr
 // ---------------------------------------------------------------- views
 
 export async function orderView(q: Q, o: any, audience: "customer" | "store" | "rider") {
+  const { rows: tickets } = audience === "customer"
+    ? await q(`SELECT id, kind, items, note, status, refund_amount AS "refundAmount", created_at AS "createdAt" FROM support_tickets WHERE order_id=$1 ORDER BY id`, [o.id])
+    : { rows: [] as any[] };
   const [{ rows: items }, { rows: events }, { rows: st }] = await Promise.all([
     q(`SELECT id, product_id AS "productId", name, pack_label AS "packLabel", image, price, qty, packed_qty AS "packedQty", removed_qty AS "removedQty", status, replaces_item_id AS "replacesItemId" FROM order_items WHERE order_id=$1 ORDER BY id`, [o.id]),
     q(`SELECT kind, message, at FROM order_events WHERE order_id=$1 ORDER BY at, id`, [o.id]),
@@ -237,6 +251,11 @@ export async function orderView(q: Q, o: any, audience: "customer" | "store" | "
     items,
     itemCount: items.reduce((s: number, i: any) => s + i.qty - i.removedQty, 0),
     subtotal: o.subtotal, deliveryFee: o.delivery_fee, handlingFee: o.handling_fee, total: o.total,
+    smallCartFee: o.small_cart_fee, discount: o.discount, couponCode: o.coupon_code, tip: o.tip, plusApplied: o.plus_applied,
+    rating: o.rating, ratingNote: o.rating_note, cancelReason: o.cancel_reason,
+    tickets,
+    canCancel: audience === "customer" && ["placed", "accepted"].includes(o.status),
+    canReportIssue: audience === "customer" && o.status === "delivered" && !!o.delivered_at && Date.now() - new Date(o.delivered_at).getTime() < 48 * 3600e3,
     paymentMethod: o.payment_method, paymentStatus: o.payment_status, substitutionPref: o.substitution_pref,
     etaMinAt: o.eta_min_at, etaMaxAt: o.eta_max_at, etaRevised: o.eta_revised, etaNote: o.eta_note,
     declineReason: o.decline_reason,
@@ -431,7 +450,7 @@ export async function listRiderDeliveries(riderId: string) {
   const { rows } = await query(
     `SELECT o.code, o.status, o.address, o.lat, o.lng, o.total, o.payment_method AS "paymentMethod", o.payment_status AS "paymentStatus",
        s.name AS "storeName", s.address AS "storeAddress", s.lat AS "storeLat", s.lng AS "storeLng", s.phone AS "storePhone",
-       c.name AS "customerName", c.phone AS "customerPhone", o.distance_m AS "distanceM", o.delivered_at AS "deliveredAt",
+       c.name AS "customerName", c.phone AS "customerPhone", o.distance_m AS "distanceM", o.tip, o.delivered_at AS "deliveredAt",
        (SELECT sum(qty - removed_qty)::int FROM order_items WHERE order_id=o.id) AS "itemCount"
      FROM orders o JOIN stores s ON s.id=o.store_id JOIN customers c ON c.id=o.customer_id
      WHERE o.rider_id=$1 AND (o.status IN ('accepted','packing','ready','out_for_delivery') OR (o.status='delivered' AND o.delivered_at > now() - interval '12 hours'))
@@ -492,4 +511,79 @@ export async function setRiderSharing(riderId: string, on: boolean) {
 
 export function newIdempotencyKey() {
   return randomBytes(12).toString("hex");
+}
+
+
+// ---------------------------------------------------------------- customer: after ordering
+
+const CANCEL_REASONS = ["Ordered by mistake", "Want to change items", "Delivery is taking too long", "Found a better price", "Other"];
+
+/** Customers can cancel until the store starts packing. Stock goes back; payment is refunded. */
+export async function cancelByCustomer(customerId: string, code: string, reason: string) {
+  const r = String(reason ?? "").trim().slice(0, 120);
+  if (!r) throw new ApiError(400, "REASON_REQUIRED", "Please tell us why you’re cancelling.");
+  return tx(async (q) => {
+    const o = await loadOrder(q, "code=$1 AND customer_id=$2", [code, customerId], true);
+    if (!o) throw new ApiError(404, "ORDER_NOT_FOUND", "We couldn't find this order.");
+    if (o.status === "cancelled") return { ok: true };
+    if (!["placed", "accepted"].includes(o.status)) throw new ApiError(409, "TOO_LATE_TO_CANCEL", "The store has started packing this order, so it can’t be cancelled now. You can report a problem after delivery.");
+    const { rows: its } = await q(`SELECT product_id, qty, removed_qty FROM order_items WHERE order_id=$1`, [o.id]);
+    for (const it of its) await q(`UPDATE store_products SET stock=stock+$3 WHERE store_id=$1 AND product_id=$2`, [o.store_id, it.product_id, it.qty - it.removed_qty]);
+    await q(`UPDATE orders SET status='cancelled', cancel_reason=$2, cancelled_at=now(), updated_at=now() WHERE id=$1`, [o.id, r]);
+    await addEvent(q, o.id, "status", STATUS_LABEL.cancelled);
+    await notice(q, o.id, `You cancelled this order (${r}). ${o.payment_status === "paid" ? `A full refund of ${rupees(o.total)} has been started (simulated).` : "You have not been charged."}`);
+    return { ok: true };
+  });
+}
+export { CANCEL_REASONS };
+
+export async function rateOrder(customerId: string, code: string, stars: number, note?: string) {
+  const n = Math.round(Number(stars));
+  if (!(n >= 1 && n <= 5)) throw new ApiError(400, "BAD_RATING", "Choose 1 to 5 stars.");
+  const r = await query(`UPDATE orders SET rating=$3, rating_note=$4 WHERE code=$1 AND customer_id=$2 AND status='delivered' RETURNING id`, [code, customerId, n, String(note ?? "").slice(0, 300) || null]);
+  if (!r.rowCount) throw new ApiError(409, "CANNOT_RATE", "You can rate an order after it’s delivered.");
+  return { ok: true };
+}
+
+const ISSUE_KINDS: Record<string, string> = { missing: "Item missing", damaged: "Item damaged or spilled", wrong: "Wrong item delivered", quality: "Poor quality or expired", late: "Delivery was very late", other: "Something else" };
+const AUTO_REFUND_LIMIT = 50000; // ₹500: smaller item refunds are approved straight away
+
+/** Report a problem within 48 hours of delivery. Item problems under ₹500 are refunded at once (simulated). */
+export async function reportIssue(customerId: string, code: string, input: { kind: string; itemIds?: number[]; note?: string }) {
+  if (!ISSUE_KINDS[input.kind]) throw new ApiError(400, "BAD_KIND", "Choose what went wrong.");
+  return tx(async (q) => {
+    const o = await loadOrder(q, "code=$1 AND customer_id=$2", [code, customerId], true);
+    if (!o) throw new ApiError(404, "ORDER_NOT_FOUND", "We couldn't find this order.");
+    if (o.status !== "delivered") throw new ApiError(409, "NOT_DELIVERED", "You can report a problem once the order is delivered.");
+    if (Date.now() - new Date(o.delivered_at).getTime() > 48 * 3600e3) throw new ApiError(409, "TOO_LATE", "Problems can be reported within 48 hours of delivery. Please contact support.");
+    const ids = (input.itemIds ?? []).map(Number).filter(Number.isFinite);
+    const needsItems = ["missing", "damaged", "wrong", "quality"].includes(input.kind);
+    if (needsItems && !ids.length) throw new ApiError(400, "PICK_ITEMS", "Select the items with the problem.");
+    const { rows: its } = ids.length ? await q(`SELECT id, name, pack_label, price, qty, removed_qty FROM order_items WHERE order_id=$1 AND id = ANY($2::int[])`, [o.id, ids]) : { rows: [] as any[] };
+    const { rows: prev } = await q(`SELECT items FROM support_tickets WHERE order_id=$1 AND refund_amount > 0`, [o.id]);
+    const alreadyRefunded = new Set<number>(prev.flatMap((t: any) => (t.items as any[]).map((i) => i.id)));
+    const fresh = its.filter((i: any) => !alreadyRefunded.has(i.id));
+    if (needsItems && !fresh.length) throw new ApiError(409, "ALREADY_REFUNDED", "These items have already been refunded.");
+    const amount = fresh.reduce((n: number, i: any) => n + i.price * (i.qty - i.removed_qty), 0);
+    const approved = needsItems && amount > 0 && amount <= AUTO_REFUND_LIMIT;
+    const status = approved ? "refund_approved" : "in_review";
+    const { rows } = await q(
+      `INSERT INTO support_tickets (order_id, customer_id, kind, items, note, status, refund_amount) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id`,
+      [o.id, customerId, input.kind, JSON.stringify(fresh.map((i: any) => ({ id: i.id, name: i.name, packLabel: i.pack_label }))), String(input.note ?? "").slice(0, 500) || null, status, approved ? amount : 0],
+    );
+    await notice(q, o.id, approved
+      ? `Refund of ${rupees(amount)} approved for: ${fresh.map((i: any) => i.name).join(", ")}. It goes back to your original payment method (simulated).`
+      : `We’ve received your report (${ISSUE_KINDS[input.kind]}). Our team will reply within 24 hours. Request #${rows[0].id}.`);
+    return { ticketId: rows[0].id, status, refund: approved ? amount : 0 };
+  });
+}
+export { ISSUE_KINDS };
+
+export async function listTickets(customerId: string) {
+  const { rows } = await query(
+    `SELECT t.id, t.kind, t.items, t.note, t.status, t.refund_amount AS "refundAmount", t.created_at AS "createdAt", o.code
+     FROM support_tickets t JOIN orders o ON o.id=t.order_id WHERE t.customer_id=$1 ORDER BY t.id DESC LIMIT 50`,
+    [customerId],
+  );
+  return rows.map((r) => ({ ...r, kindLabel: ISSUE_KINDS[r.kind] ?? r.kind }));
 }

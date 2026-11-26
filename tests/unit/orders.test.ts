@@ -2,7 +2,8 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { query, resetDatabase } from "@/lib/server/db";
 import { quote } from "@/lib/server/cart";
 import { catalogue, search } from "@/lib/server/catalogue";
-import { placeOrder, storeAction, riderAction, getCustomerOrder } from "@/lib/server/orders";
+import { placeOrder, storeAction, riderAction, getCustomerOrder, cancelByCustomer, reportIssue, rateOrder } from "@/lib/server/orders";
+import { setPlus } from "@/lib/server/account";
 import { SAMPLE_ADDRESSES } from "@/lib/demo-data";
 
 const home = SAMPLE_ADDRESSES[0];
@@ -124,5 +125,92 @@ describe("search", () => {
   it("finds products by Tamil names within the selected store", async () => {
     expect((await search(query, "greenleaf", "அரிசி")).map((p) => p.productId)).toContain("rice-sona-5kg");
     expect((await search(query, "greenleaf", "தக்காளி")).some((p) => p.groupKey === "tomato")).toBe(true);
+  });
+});
+
+describe("fees, coupons, membership and after-order features", () => {
+  const place = async (c: string, key: string, items: { productId: string; qty: number }[], opts: { couponCode?: string; tip?: number } = {}) => {
+    const qt = await quote(query, "greenleaf", items, home, { ...opts, customerId: c });
+    return placeOrder(c, { idempotencyKey: key, storeId: "greenleaf", items: qt.lines.map((l) => ({ productId: l.productId, qty: l.qty, price: l.price })), address, substitutionPref: "remove", paymentMethod: "cod", expectedTotal: qt.total, ...opts });
+  };
+
+  it("shows every fee up front: small cart fee under ₹99, handling, delivery, tip", async () => {
+    const c = await freshCustomer("fees-1");
+    const q = await quote(query, "greenleaf", [{ productId: "chilli-100g", qty: 1 }], home, { customerId: c, tip: 2000 });
+    expect(q.smallCartFee).toBe(1500);
+    expect(q.handlingFee).toBe(500);
+    expect(q.deliveryFee).toBe(2500);
+    expect(q.tip).toBe(2000);
+    expect(q.total).toBe(q.subtotal + 1500 + 500 + 2500 + 2000);
+  });
+
+  it("checks coupon rules: first order, minimum value, category, invalid codes", async () => {
+    const c = await freshCustomer("cp-1");
+    const big = [{ productId: "rice-sona-5kg", qty: 1 }];
+    const q1 = await quote(query, "greenleaf", big, home, { customerId: c, couponCode: "WELCOME50" });
+    expect(q1.coupon?.eligible).toBe(true);
+    expect(q1.discount).toBe(7500); // 50% capped at ₹75
+    const small = await quote(query, "greenleaf", [{ productId: "lemon-4", qty: 1 }], home, { customerId: c, couponCode: "SAVE30" });
+    expect(small.coupon?.eligible).toBe(false);
+    expect(small.coupon?.reason).toMatch(/Add items worth/);
+    const veg = await quote(query, "greenleaf", [{ productId: "rice-sona-5kg", qty: 1 }], home, { customerId: c, couponCode: "VEGGIE10" });
+    expect(veg.coupon?.eligible).toBe(false);
+    const bad = await quote(query, "greenleaf", big, home, { customerId: c, couponCode: "NOPE" });
+    expect(bad.coupon?.eligible).toBe(false);
+    // Placing with an ineligible coupon is refused, never silently dropped.
+    await expect(place(c, "cp-key-0000001", [{ productId: "lemon-4", qty: 1 }], { couponCode: "SAVE30" })).rejects.toMatchObject({ code: "COUPON_INVALID" });
+    const ok = await place(c, "cp-key-0000002", big, { couponCode: "WELCOME50", tip: 1000 });
+    const o = await getCustomerOrder(c, ok.code);
+    expect(o.discount).toBe(7500);
+    expect(o.tip).toBe(1000);
+    expect((await quote(query, "greenleaf", big, home, { customerId: c, couponCode: "WELCOME50" })).coupon?.reason).toMatch(/first order/);
+  });
+
+  it("Plus removes the small cart fee and gives free delivery above ₹99; cancel keeps benefits until the end", async () => {
+    const c = await freshCustomer("plus-1");
+    await setPlus(c, "join");
+    const q = await quote(query, "greenleaf", [{ productId: "chilli-100g", qty: 1 }], home, { customerId: c });
+    expect(q.isPlus).toBe(true);
+    expect(q.smallCartFee).toBe(0);
+    const q2 = await quote(query, "greenleaf", [{ productId: "honey-250g", qty: 1 }], home, { customerId: c });
+    expect(q2.deliveryFee).toBe(0);
+    const acc = await setPlus(c, "cancel");
+    expect(acc.plus.active).toBe(true);
+    expect(acc.plus.autoRenew).toBe(false);
+  });
+
+  it("customer can cancel before packing (stock returns) but not after", async () => {
+    const c = await freshCustomer("cancel-1");
+    const before = (await query(`SELECT stock FROM store_products WHERE store_id='greenleaf' AND product_id='onion-1kg'`)).rows[0].stock;
+    const { code } = await place(c, "cancel-key-0001", [{ productId: "onion-1kg", qty: 2 }]);
+    await cancelByCustomer(c, code, "Ordered by mistake");
+    expect((await getCustomerOrder(c, code)).status).toBe("cancelled");
+    expect((await query(`SELECT stock FROM store_products WHERE store_id='greenleaf' AND product_id='onion-1kg'`)).rows[0].stock).toBe(before);
+    const second = await place(c, "cancel-key-0002", [{ productId: "onion-1kg", qty: 1 }]);
+    await storeAction("greenleaf", second.code, "accept");
+    await storeAction("greenleaf", second.code, "start_packing");
+    await expect(cancelByCustomer(c, second.code, "Other")).rejects.toMatchObject({ code: "TOO_LATE_TO_CANCEL" });
+  });
+
+  it("reports a missing item after delivery: refund approved once, then rating", async () => {
+    const c = await freshCustomer("issue-1");
+    const { code } = await place(c, "issue-key-0001", [{ productId: "curd-400g", qty: 1 }, { productId: "bread-400g", qty: 1 }]);
+    await expect(reportIssue(c, code, { kind: "missing", itemIds: [1] })).rejects.toMatchObject({ code: "NOT_DELIVERED" });
+    await storeAction("greenleaf", code, "accept");
+    await storeAction("greenleaf", code, "start_packing");
+    let o = await getCustomerOrder(c, code);
+    for (const i of o.items) await storeAction("greenleaf", code, "pack_item", { itemId: i.id, packedQty: i.qty });
+    await storeAction("greenleaf", code, "ready");
+    const rider = (await query(`SELECT rider_id FROM orders WHERE code=$1`, [code])).rows[0].rider_id;
+    await riderAction(rider, code, "pickup");
+    await riderAction(rider, code, "deliver");
+    o = await getCustomerOrder(c, code);
+    const curd = o.items.find((i: any) => i.productId === "curd-400g")!;
+    const r = await reportIssue(c, code, { kind: "missing", itemIds: [curd.id] });
+    expect(r.status).toBe("refund_approved");
+    expect(r.refund).toBe(curd.price);
+    await expect(reportIssue(c, code, { kind: "missing", itemIds: [curd.id] })).rejects.toMatchObject({ code: "ALREADY_REFUNDED" });
+    await rateOrder(c, code, 5, "Quick!");
+    expect((await getCustomerOrder(c, code)).rating).toBe(5);
   });
 });

@@ -1,4 +1,4 @@
-import { SCHEMA_SQL } from "./schema";
+import { SCHEMA_SQL, SCHEMA_V2_SQL } from "./schema";
 import { seedDatabase } from "./seed";
 
 /**
@@ -93,6 +93,7 @@ async function init(): Promise<Driver> {
     // Several serverless instances may boot at once: only one creates and seeds the tables.
     if (url) await q("SELECT pg_advisory_xact_lock(727274)");
     await q(SCHEMA_SQL);
+    await q(SCHEMA_V2_SQL);
     const { rows } = await q("SELECT count(*)::int AS n FROM stores");
     if (rows[0].n === 0) await seedDatabase(q);
   });
@@ -112,8 +113,9 @@ export async function tx<T>(fn: (q: Q) => Promise<T>): Promise<T> {
 /** Drops everything and re-seeds. Used by the demo reset button and tests. */
 export async function resetDatabase(): Promise<void> {
   await tx(async (q) => {
-    await q(`DROP TABLE IF EXISTS order_events, order_items, orders, rider_locations, riders, store_products, products, customers, stores CASCADE`);
+    await q(`DROP TABLE IF EXISTS support_tickets, coupons, order_events, order_items, orders, rider_locations, riders, store_products, products, customers, stores CASCADE`);
     await q(SCHEMA_SQL);
+    await q(SCHEMA_V2_SQL);
     await seedDatabase(q);
   });
 }

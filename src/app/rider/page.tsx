@@ -20,7 +20,7 @@ type Me = { role: string; id: string; name: string };
 type Delivery = {
   code: string; status: string; statusLabel: string; address: any; lat: number; lng: number; total: number;
   paymentMethod: string; paymentStatus: string; storeName: string; storeAddress: string; storeLat: number; storeLng: number;
-  storePhone: string; customerName: string; customerPhone: string; itemCount: number; distanceM: number; deliveredAt: string | null;
+  storePhone: string; customerName: string; customerPhone: string; itemCount: number; distanceM: number; deliveredAt: string | null; tip: number;
 };
 const navUrl = (lat: number, lng: number) => `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=two-wheeler`;
 const GOLD = "#E2B65C";
@@ -186,6 +186,7 @@ function TripCard({ d, onChange }: { d: Delivery; onChange: () => void }) {
           <div className="min-w-0 flex-1">
             <p className="text-[10.5px] font-bold uppercase tracking-[.14em] text-ink-2">{collect ? "Collect at door" : "Payment"}</p>
             <p className="text-lg font-bold tabular-nums" style={collect ? { color: "#9A7425" } : undefined}>{collect ? rupees(d.total) : "Paid online"}<span className="ml-2 text-sm font-medium text-ink-2">· {d.itemCount} item{d.itemCount === 1 ? "" : "s"}</span></p>
+            {d.tip ? <p className="mt-0.5 text-sm font-semibold text-brand">+ {rupees(d.tip)} tip for you</p> : null}
           </div>
           {(d.customerPhone || a.phone) ? (
             <a href={`tel:${String(d.customerPhone || a.phone).replace(/\s/g, "")}`} className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-line px-3.5 text-sm font-semibold text-ink hover:bg-[#F3F5F2]">

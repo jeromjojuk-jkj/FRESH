@@ -35,6 +35,7 @@ export function SearchBox({ storeId, initial = "", autoFocus, compact }: { store
     const t = text.trim();
     if (!t) return;
     setOpen(false);
+    rememberSearch(t);
     router.push(`/search?q=${encodeURIComponent(t)}`);
   };
 
@@ -96,3 +97,12 @@ export function SearchBox({ storeId, initial = "", autoFocus, compact }: { store
     </form>
   );
 }
+
+const RECENT_KEY = "kf.recent-searches";
+export function recentSearches(): string[] {
+  try { return JSON.parse(localStorage.getItem(RECENT_KEY) ?? "[]"); } catch { return []; }
+}
+function rememberSearch(t: string) {
+  try { localStorage.setItem(RECENT_KEY, JSON.stringify([t, ...recentSearches().filter((x) => x.toLowerCase() !== t.toLowerCase())].slice(0, 6))); } catch {}
+}
+export function clearRecentSearches() { try { localStorage.removeItem(RECENT_KEY); } catch {} }

@@ -129,3 +129,51 @@ CREATE TABLE IF NOT EXISTS order_events (
 );
 CREATE INDEX IF NOT EXISTS order_events_order ON order_events(order_id);
 `;
+
+// ---- Quick-commerce features: membership, coupons, tips, fees, cancellations, ratings, support ----
+export const SCHEMA_V2_SQL = /* sql */ `
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS plus_until TIMESTAMPTZ;
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS plus_auto_renew BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS small_cart_fee INT NOT NULL DEFAULT 0;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS discount INT NOT NULL DEFAULT 0;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS coupon_code TEXT;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS tip INT NOT NULL DEFAULT 0;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS plus_applied BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS cancel_reason TEXT;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS cancelled_at TIMESTAMPTZ;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS rating INT;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS rating_note TEXT;
+
+CREATE TABLE IF NOT EXISTS coupons (
+  code TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  description TEXT NOT NULL,
+  kind TEXT NOT NULL,              -- pct | flat | freedelivery
+  value INT NOT NULL,              -- percent for pct, paise for flat
+  max_discount INT,                -- paise cap for pct
+  min_order INT NOT NULL DEFAULT 0,
+  category TEXT,                   -- pct/flat on one category's items only
+  first_order_only BOOLEAN NOT NULL DEFAULT FALSE,
+  plus_only BOOLEAN NOT NULL DEFAULT FALSE,
+  active BOOLEAN NOT NULL DEFAULT TRUE
+);
+INSERT INTO coupons (code,title,description,kind,value,max_discount,min_order,category,first_order_only,plus_only) VALUES
+ ('WELCOME50','50% off your first order','Up to ₹75 off on your first KripFresh order of ₹149 or more.','pct',50,7500,14900,NULL,TRUE,FALSE),
+ ('SAVE30','Flat ₹30 off','On orders of ₹299 or more.','flat',3000,NULL,29900,NULL,FALSE,FALSE),
+ ('FREEDEL','Free delivery','No delivery fee on orders of ₹99 or more.','freedelivery',0,NULL,9900,NULL,FALSE,FALSE),
+ ('VEGGIE10','10% off fruits & vegetables','Up to ₹40 off the fruits and vegetables in your cart.','pct',10,4000,0,'fruits-vegetables',FALSE,FALSE),
+ ('PLUS20','Plus: 20% off','Up to ₹60 off on ₹199 or more, for KripFresh Plus members.','pct',20,6000,19900,NULL,FALSE,TRUE)
+ON CONFLICT (code) DO NOTHING;
+
+CREATE TABLE IF NOT EXISTS support_tickets (
+  id SERIAL PRIMARY KEY,
+  order_id INT NOT NULL REFERENCES orders(id),
+  customer_id TEXT NOT NULL REFERENCES customers(id),
+  kind TEXT NOT NULL,              -- missing | damaged | wrong | quality | late | other
+  items JSONB NOT NULL DEFAULT '[]',
+  note TEXT,
+  status TEXT NOT NULL,            -- refund_approved | in_review | resolved
+  refund_amount INT NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+`;
