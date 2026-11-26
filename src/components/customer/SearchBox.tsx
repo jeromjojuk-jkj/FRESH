@@ -56,10 +56,10 @@ export function SearchBox({ storeId, initial = "", autoFocus }: { storeId: strin
   return (
     <form role="search" onSubmit={(e) => { e.preventDefault(); go(active >= 0 ? sugs[active] : q); }} className="relative">
       <label htmlFor="q" className="sr-only">Search products in this store</label>
-      <IconSearch className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-brand" />
+      <IconSearch className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-ink" />
       <input
         id="q" type="search" value={q} autoFocus={autoFocus} autoComplete="off" enterKeyHint="search"
-        placeholder={voice === "listening" ? "Listening…" : "Search milk, rice or tomatoes"}
+        placeholder={voice === "listening" ? "Listening…" : 'Search "milk" or "rice"'}
         role="combobox" aria-expanded={open && sugs.length > 0} aria-controls={listId} aria-autocomplete="list"
         aria-activedescendant={active >= 0 ? `${listId}-${active}` : undefined}
         onChange={(e) => { setQ(e.target.value); setOpen(true); setActive(-1); }}
@@ -70,17 +70,17 @@ export function SearchBox({ storeId, initial = "", autoFocus }: { storeId: strin
           if (e.key === "ArrowUp") { e.preventDefault(); setActive((a) => Math.max(-1, a - 1)); }
           if (e.key === "Escape") setOpen(false);
         }}
-        className="h-14 w-full rounded-2xl border-0 bg-white pl-12 pr-28 text-base text-ink shadow-[var(--shadow-soft)] ring-1 ring-line placeholder:text-[#5B6B60] focus:outline-none focus:ring-2 focus:ring-brand [&::-webkit-search-cancel-button]:hidden"
+        className="h-[50px] w-full rounded-xl border border-line bg-white pl-12 pr-24 text-[15px] text-ink placeholder:text-[#5E6368] focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30 [&::-webkit-search-cancel-button]:hidden"
       />
-      <div className="absolute right-1.5 top-1/2 flex -translate-y-1/2 items-center gap-1">
+      <div className="absolute right-1 top-1/2 flex -translate-y-1/2 items-center gap-1">
         {q ? (
           <button type="button" onClick={() => { setQ(""); setSugs([]); }} className="grid h-11 w-11 place-items-center rounded-full text-ink-2 hover:bg-mint" aria-label="Clear search"><IconX /></button>
         ) : null}
         {voice !== "off" && !q ? (
           <button type="button" onClick={listen} aria-pressed={voice === "listening"} aria-label={voice === "listening" ? "Stop voice search" : "Search by voice"}
-            className={`grid h-11 w-11 place-items-center rounded-xl ${voice === "listening" ? "bg-heart text-white" : "bg-mint text-brand"}`}><IconMic /></button>
+            className={`grid h-11 w-11 place-items-center rounded-xl ${voice === "listening" ? "bg-heart text-white" : "text-ink-2 hover:bg-mint"}`}><IconMic /></button>
         ) : null}
-        <button type="submit" aria-label="Search" className="grid h-11 w-11 place-items-center rounded-xl bg-brand text-white hover:bg-brand-dark"><IconSearch /></button>
+        <button type="submit" className="sr-only">Search</button>
       </div>
       {open && sugs.length > 0 ? (
         <ul id={listId} role="listbox" className="fade-in absolute inset-x-0 top-full z-40 mt-2 overflow-hidden rounded-2xl border border-line bg-white shadow-lg">

@@ -15,9 +15,9 @@ export function CartBar() {
   const t = cartTotals(c);
   if (!hydrated || t.count === 0 || path === "/cart") return null;
   return (
-    <div className="fixed inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-30 px-3 pt-2 lg:hidden">
-      <Link href="/cart" className="fade-in mx-auto flex min-h-14 max-w-xl items-center gap-3 rounded-full bg-brand px-3 pr-5 text-white shadow-[0_10px_30px_-10px_rgba(21,132,58,.7)]">
-        <span className="grid h-10 w-10 place-items-center rounded-full bg-white/15"><IconBag /></span>
+    <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-30 px-3 pt-2 lg:hidden">
+      <Link href="/cart" className="fade-in mx-auto flex min-h-14 max-w-xl items-center gap-3 rounded-xl bg-brand px-3 pr-4 text-white shadow-[var(--shadow-lift)]">
+        <span className="grid h-10 w-10 place-items-center rounded-lg bg-white/20"><IconBag /></span>
         <span className="flex-1 leading-tight">
           <span className="block text-sm font-medium">{t.count} item{t.count > 1 ? "s" : ""}</span>
           <span className="block text-base font-bold">{rupees(t.subtotal)}</span>

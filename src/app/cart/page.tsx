@@ -171,7 +171,7 @@ export default function CartPage() {
             <p className="clear-left mb-3 text-xs text-ink-2">We never swap items or raise your total without asking.</p>
             {([["contact", "Contact me about a replacement", "You choose a replacement or remove the item, from the tracking screen."], ["remove", "Remove the item", "We remove it and reduce your total."]] as const).map(([v, t, d]) => (
               <label key={v} className={`mb-2 flex min-h-14 cursor-pointer items-start gap-3 rounded-xl border-2 p-3 ${pref === v ? "border-brand bg-mint/60" : "border-line"}`}>
-                <input type="radio" name="pref" value={v} checked={pref === v} onChange={() => setPref(v)} className="mt-1 h-5 w-5 accent-[#15843A]" />
+                <input type="radio" name="pref" value={v} checked={pref === v} onChange={() => setPref(v)} className="mt-1 h-5 w-5 accent-[#1C9A41]" />
                 <span><span className="block text-sm font-semibold">{t}</span><span className="block text-xs text-ink-2">{d}</span></span>
               </label>
             ))}
@@ -180,11 +180,11 @@ export default function CartPage() {
           <fieldset className="rounded-[var(--radius-card)] border border-line p-4">
             <legend className="float-left mb-2 w-full text-base font-semibold">Payment</legend>
             <label className={`mb-2 flex min-h-14 cursor-pointer items-center gap-3 rounded-xl border-2 p-3 ${pay === "cod" ? "border-brand bg-mint/60" : "border-line"}`}>
-              <input type="radio" name="pay" checked={pay === "cod"} onChange={() => setPay("cod")} className="h-5 w-5 accent-[#15843A]" />
+              <input type="radio" name="pay" checked={pay === "cod"} onChange={() => setPay("cod")} className="h-5 w-5 accent-[#1C9A41]" />
               <span className="text-sm font-semibold">Cash on delivery <span className="block text-xs font-normal text-ink-2">Pay the rider in cash or UPI at your door</span></span>
             </label>
             <label className={`flex min-h-14 cursor-pointer items-center gap-3 rounded-xl border-2 p-3 ${pay === "upi_demo" ? "border-brand bg-mint/60" : "border-line"}`}>
-              <input type="radio" name="pay" checked={pay === "upi_demo"} onChange={() => { setPay("upi_demo"); paidRef.current = null; }} className="h-5 w-5 accent-[#15843A]" />
+              <input type="radio" name="pay" checked={pay === "upi_demo"} onChange={() => { setPay("upi_demo"); paidRef.current = null; }} className="h-5 w-5 accent-[#1C9A41]" />
               <span className="flex-1 text-sm font-semibold">UPI / online <span className="block text-xs font-normal text-ink-2">Simulated in this demo — no money moves</span></span>
               <DemoTag>Simulated</DemoTag>
             </label>

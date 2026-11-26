@@ -1,11 +1,11 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import type { CatalogueProduct } from "@/lib/types";
 import { rupees } from "@/lib/money";
 import { api } from "@/lib/client/api";
-import { cart, favs, setQty, toggleFav } from "@/lib/client/store";
+import { cart, setQty } from "@/lib/client/store";
 import { Button, Sheet } from "../ui";
-import { IconHeart, IconMinus, IconPlus } from "../icons";
+import { IconClock, IconMinus, IconPlus } from "../icons";
 
 export function groupVariants(products: CatalogueProduct[]): CatalogueProduct[][] {
   const map = new Map<string, CatalogueProduct[]>();
@@ -32,20 +32,9 @@ function SaveTag({ p, className = "" }: { p: CatalogueProduct; className?: strin
   const pct = savePct(p);
   if (pct < 3 || !p.inStock) return null;
   return (
-    <span className={`save-tag absolute left-2 top-0 z-[1] bg-fresh px-1.5 pb-2.5 pt-1.5 text-center text-[11px] font-bold leading-none text-brand-dark ${className}`}>
-      {pct}%<span className="block text-[10px] font-semibold">Save</span>
+    <span className={`save-tag absolute left-2 top-0 z-[1] bg-deal px-1.5 pb-2.5 pt-1.5 text-center text-[11px] font-bold leading-none text-white ${className}`}>
+      {pct}%<span className="block text-[10px] font-semibold">OFF</span>
     </span>
-  );
-}
-
-function FavButton({ p }: { p: CatalogueProduct }) {
-  const f = favs.use();
-  const on = !!f.ids[p.productId];
-  return (
-    <button type="button" onClick={() => toggleFav(p.productId)} aria-pressed={on} aria-label={`${on ? "Remove from" : "Add to"} favourites: ${p.name}`}
-      className={`absolute right-1.5 top-1.5 z-[1] grid h-11 w-11 place-items-center rounded-full bg-white/95 shadow-[var(--shadow-soft)] ${on ? "text-heart" : "text-ink-2"}`}>
-      <IconHeart className="h-5 w-5" filled={on} />
-    </button>
   );
 }
 
@@ -60,8 +49,12 @@ export function MiniStepper({ qty, max, label, onChange }: { qty: number; max?: 
   );
 }
 
+/** Estimated minutes for the selected store, shown on each card ("22 MINS"). */
+export const EtaContext = createContext<number | null>(null);
+
 export function ProductCard({ variants, storeId }: { variants: CatalogueProduct[]; storeId: string }) {
   const c = cart.use();
+  const eta = useContext(EtaContext);
   const inCart = (id: string) => (c.storeId === storeId ? c.items[id]?.qty ?? 0 : 0);
   const initial = useMemo(
     () => variants.find((v) => inCart(v.productId) > 0) ?? variants.find((v) => v.inStock) ?? variants[0],
@@ -73,55 +66,62 @@ export function ProductCard({ variants, storeId }: { variants: CatalogueProduct[
   const p = variants.find((v) => v.productId === selId) ?? variants[0];
   const qty = inCart(p.productId);
   const label = `${p.name}, ${p.packLabel}`;
+  const pct = savePct(p);
 
   return (
-    <article className="relative flex h-full flex-col rounded-[var(--radius-card)] border border-line bg-white p-2.5 shadow-[var(--shadow-soft)]" aria-label={label}>
-      <SaveTag p={p} />
-      <FavButton p={p} />
+    <article className="relative flex h-full flex-col rounded-xl border border-line bg-white p-2" aria-label={label}>
+      {pct >= 3 && p.inStock ? (
+        <span className="save-tag absolute left-1.5 top-0 z-[1] bg-deal px-1 pb-2 pt-1 text-center text-[10px] font-bold leading-none text-white">
+          {pct}%<span className="block text-[9px]">OFF</span>
+        </span>
+      ) : null}
       <button type="button" onClick={() => setDetail(true)} aria-label={`Details for ${label}`}
-        className={`relative mb-2 grid aspect-square w-full place-items-center rounded-2xl bg-tile ${p.inStock ? "" : "opacity-60 grayscale"}`}>
+        className={`relative grid aspect-square w-full place-items-center rounded-lg bg-tile ${p.inStock ? "" : "opacity-60 grayscale"}`}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={p.image} alt="" width={256} height={256} loading="lazy" decoding="async" className="h-[66%] w-[66%] object-contain drop-shadow-sm" />
-        {!p.inStock ? <span className="absolute inset-x-2 bottom-2 rounded-lg bg-white/95 py-1 text-center text-xs font-semibold text-ink">Out of stock</span> : null}
+        <img src={p.image} alt="" width={256} height={256} loading="lazy" decoding="async" className="h-[70%] w-[70%] object-contain" />
+        {!p.inStock ? <span className="absolute inset-x-2 bottom-2 rounded-md bg-white/95 py-0.5 text-center text-[11px] font-semibold text-ink">Out of stock</span> : null}
       </button>
-
+      {eta ? (
+        <span className="mt-1.5 inline-flex w-fit items-center gap-1 rounded-md bg-tile px-1.5 py-0.5 text-[9.5px] font-bold text-ink"><IconClock className="h-3 w-3" />{eta} MINS</span>
+      ) : null}
+      <h3 className="mt-1 line-clamp-2 min-h-[2.6em] text-[12.5px] font-semibold leading-[1.3] text-ink">{p.name}</h3>
       {variants.length > 1 ? (
-        <div className="mb-1.5 flex flex-wrap gap-1.5" role="radiogroup" aria-label={`Pack size for ${p.name}`}>
+        <div className="mt-1 flex flex-wrap gap-1" role="radiogroup" aria-label={`Pack size for ${p.name}`}>
           {variants.map((v) => {
             const on = v.productId === p.productId;
             const n = inCart(v.productId);
             return (
               <button key={v.productId} type="button" role="radio" aria-checked={on} onClick={() => setSelId(v.productId)}
-                className={`min-h-9 rounded-lg border-2 px-2.5 text-[13px] font-semibold ${on ? "border-brand bg-fresh text-ink" : "border-line bg-white text-ink-2 hover:border-brand"}`}>
-                {v.packLabel}{n ? ` · ${n} in cart` : ""}
+                className={`min-h-8 rounded-lg border-[1.5px] px-1.5 text-[11px] font-semibold ${on ? "border-brand bg-mint text-ink" : "border-line bg-white text-ink-2 hover:border-brand"}`}>
+                {v.packLabel}{n ? ` · ${n}` : ""}
               </button>
             );
           })}
         </div>
       ) : (
-        <span className="mb-1.5 inline-flex w-fit rounded-lg bg-mint px-2 py-0.5 text-[13px] font-semibold text-ink">{p.packLabel}</span>
+        <p className="mt-0.5 text-[11.5px] text-ink-2">{p.packLabel}</p>
       )}
-
-      <h3 className="line-clamp-2 text-[13.5px] font-semibold leading-5 text-ink">{p.name}</h3>
-      <p className="truncate text-[11.5px] text-ink-2">{p.brand ? `${p.brand} · ` : ""}{p.packLabel}</p>
-
-      <div className="mt-auto flex items-end gap-2 pt-2">
-        <span className="min-w-0 flex-1 leading-tight">
-          <span className="block text-[17px] font-bold text-ink">{rupees(p.price)}</span>
-          {p.mrp > p.price ? <span className="text-[11.5px] text-ink-2 line-through"><span className="sr-only">MRP </span>{rupees(p.mrp)}</span> : <span className="text-[11px] font-semibold text-brand">MRP price</span>}
+      <div className="mt-auto flex items-end justify-between gap-1.5 pt-2">
+        <span className="min-w-0 leading-tight">
+          <span className="block text-[13.5px] font-bold text-ink">{rupees(p.price)}</span>
+          {p.mrp > p.price ? <span className="text-[11px] text-ink-2 line-through"><span className="sr-only">MRP </span>{rupees(p.mrp)}</span> : null}
         </span>
         {!p.inStock ? (
-          <span className="pb-2 text-xs font-semibold text-ink-2">Sold out</span>
+          <span className="pb-1 text-[11px] font-semibold text-ink-2">Sold out</span>
         ) : qty > 0 ? (
-          <MiniStepper qty={qty} max={p.stock} label={label} onChange={(n) => addToCart(storeId, p, n)} />
+          <div className="flex h-9 min-w-[72px] items-center rounded-lg bg-brand text-white" role="group" aria-label={`Quantity of ${label}`}>
+            <button type="button" onClick={() => addToCart(storeId, p, qty - 1)} className="relative grid h-9 w-6 place-items-center after:absolute after:-inset-x-0.5 after:-inset-y-1" aria-label={qty === 1 ? `Remove ${label}` : `Decrease ${label}`}><IconMinus className="h-3.5 w-3.5" /></button>
+            <output className="flex-1 text-center text-[13px] font-bold" aria-live="polite">{qty}</output>
+            <button type="button" onClick={() => addToCart(storeId, p, qty + 1)} disabled={qty >= p.stock} className="relative grid h-9 w-6 place-items-center after:absolute after:-inset-x-0.5 after:-inset-y-1 disabled:opacity-40" aria-label={`Increase ${label}`}><IconPlus className="h-3.5 w-3.5" /></button>
+          </div>
         ) : (
           <button type="button" onClick={() => addToCart(storeId, p, 1)} aria-label={`Add ${label} to cart`}
-            className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-brand text-white shadow-[var(--shadow-lift)] hover:bg-brand-dark">
-            <IconPlus className="h-5 w-5" />
+            className="relative h-9 min-w-16 rounded-lg border-[1.5px] border-brand bg-mint px-2 text-[13px] font-bold tracking-wide text-brand after:absolute after:-inset-y-1 after:inset-x-0 hover:bg-fresh">
+            ADD
           </button>
         )}
       </div>
-      {p.inStock && p.stock <= 5 ? <p className="mt-1 text-[11px] font-semibold text-warn">Only {p.stock} left</p> : null}
+      {p.inStock && p.stock <= 5 ? <p className="mt-1 text-[10.5px] font-semibold text-warn">Only {p.stock} left</p> : null}
 
       <ProductSheet open={detail} onClose={() => setDetail(false)} storeId={storeId} variants={variants} selectedId={p.productId} onSelect={setSelId} />
     </article>
@@ -220,7 +220,7 @@ function ProductSheet({ open, onClose, storeId, variants, selectedId, onSelect }
 export function ProductGrid({ products, storeId }: { products: CatalogueProduct[]; storeId: string }) {
   const groups = groupVariants(products);
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5">
+    <div className="grid grid-cols-2 gap-x-2 gap-y-2.5 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5">
       {groups.map((g) => <ProductCard key={g.map((x) => x.productId).join()} variants={g} storeId={storeId} />)}
     </div>
   );
@@ -229,9 +229,9 @@ export function ProductGrid({ products, storeId }: { products: CatalogueProduct[
 export function ProductRow({ products, storeId }: { products: CatalogueProduct[]; storeId: string }) {
   const groups = groupVariants(products);
   return (
-    <div className="no-scrollbar relative -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2 pt-1 md:mx-0 md:grid md:grid-cols-4 md:overflow-visible md:px-0 xl:grid-cols-5">
+    <div className="no-scrollbar relative -mx-4 flex gap-2.5 overflow-x-auto px-4 pb-1 md:mx-0 md:grid md:grid-cols-4 md:overflow-visible md:px-0 xl:grid-cols-5">
       {groups.map((g) => (
-        <div key={g.map((x) => x.productId).join()} className="w-[46%] shrink-0 snap-start sm:w-[31%] md:w-auto">
+        <div key={g.map((x) => x.productId).join()} className="w-[140px] shrink-0 md:w-auto">
           <ProductCard variants={g} storeId={storeId} />
         </div>
       ))}

@@ -3,37 +3,37 @@
     "name": "Customer who denies GPS can still enter an address and place an order",
     "ok": true,
     "note": "NB-1002, one order after double-tap",
-    "ms": 1694
+    "ms": 1731
   },
   {
     "name": "Store at 3.00 km is eligible; 3.01 km is excluded",
     "ok": true,
     "note": "3.00 km → true, 3.01 km → false; Whitefield 0 stores; Koramangala 2 stores",
-    "ms": 37
+    "ms": 38
   },
   {
     "name": "Same product has different price and stock at two stores without mixing",
     "ok": true,
     "note": "Sona Masoori 5 kg: Greenleaf ₹353 (45 in stock) vs Annapurna ₹326 (29)",
-    "ms": 25
+    "ms": 24
   },
   {
     "name": "Add groceries, change quantities, refresh — cart intact",
     "ok": true,
     "note": "4 items ₹964 View cart",
-    "ms": 946
+    "ms": 1093
   },
   {
     "name": "Two customers buying the final unit: only one confirmed order",
     "ok": true,
     "note": "HTTP 201 + 409; loser told: “Sorry, Wild Forest Honey (250 g) is no longer available in that quantity.”",
-    "ms": 66
+    "ms": 58
   },
   {
     "name": "Order flows checkout → store packing → rider pickup → delivered, updating every screen",
     "ok": true,
     "note": "NB-1002: accepted in 2 taps, missing item resolved by customer, delivered; rider sharing stopped",
-    "ms": 18979
+    "ms": 18874
   },
   {
     "name": "Customer can follow progress when map / live location is unavailable",
@@ -45,12 +45,12 @@
     "name": "Main shopping and supplier screens work at 360 px and desktop (no sideways scroll)",
     "ok": true,
     "note": "16 screens × 2 widths",
-    "ms": 17616
+    "ms": 18150
   },
   {
     "name": "CSV import preview preserves barcode leading zeros and is store-scoped",
     "ok": true,
     "note": "0012345678905 kept; bad row rejected; Greenleaf can't see Annapurna's import",
-    "ms": 441
+    "ms": 452
   }
 ]

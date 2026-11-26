@@ -31,13 +31,13 @@ export default function SettingsPage() {
     <div className="max-w-lg space-y-5 pb-6">
       <h1 className="text-xl font-bold">Store settings</h1>
       <label className={`flex min-h-16 cursor-pointer items-center gap-3 rounded-2xl border-2 p-4 ${f.acceptingOrders ? "border-brand bg-fresh/50" : "border-warn bg-warn-bg"}`}>
-        <input type="checkbox" checked={f.acceptingOrders} onChange={(e) => setF({ ...f, acceptingOrders: e.target.checked })} className="h-6 w-6 accent-[#15843A]" />
+        <input type="checkbox" checked={f.acceptingOrders} onChange={(e) => setF({ ...f, acceptingOrders: e.target.checked })} className="h-6 w-6 accent-[#1C9A41]" />
         <span><span className="block font-semibold">{f.acceptingOrders ? "Accepting orders" : "Not accepting orders"}</span><span className="block text-xs text-ink-2">Turn off to pause new orders. Orders in progress are not affected.</span></span>
       </label>
 
       <fieldset className="space-y-3 rounded-2xl border border-line p-4">
         <legend className="px-1 font-semibold">Opening hours</legend>
-        <label className="flex min-h-11 items-center gap-2 text-sm font-medium"><input type="checkbox" checked={f.is24} onChange={(e) => setF({ ...f, is24: e.target.checked, openTime: e.target.checked ? f.openTime : "07:00", closeTime: e.target.checked ? f.closeTime : "22:00" })} className="h-5 w-5 accent-[#15843A]" /> Open 24 hours</label>
+        <label className="flex min-h-11 items-center gap-2 text-sm font-medium"><input type="checkbox" checked={f.is24} onChange={(e) => setF({ ...f, is24: e.target.checked, openTime: e.target.checked ? f.openTime : "07:00", closeTime: e.target.checked ? f.closeTime : "22:00" })} className="h-5 w-5 accent-[#1C9A41]" /> Open 24 hours</label>
         {!f.is24 ? (
           <div className="grid grid-cols-2 gap-3">
             <Field id="open" label="Opens at"><input id="open" type="time" className={inputCls} value={f.openTime} onChange={(e) => setF({ ...f, openTime: e.target.value })} /></Field>

@@ -76,7 +76,7 @@ function NewOrderCard({ o, now, onChange }: { o: any; now: number; onChange: () 
   };
 
   return (
-    <li className="rounded-[var(--radius-card)] border-2 border-brand bg-white p-4 shadow-[0_8px_24px_-16px_rgba(21,132,58,.6)]">
+    <li className="rounded-[var(--radius-card)] border-2 border-brand bg-white p-4 shadow-[var(--shadow-soft)]">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <strong className="text-xl">{o.code}</strong>
         <span className="text-sm text-ink-2">Received {timeIST(o.createdAt)} · {ago(o.createdAt, now)}</span>
@@ -99,7 +99,7 @@ function NewOrderCard({ o, now, onChange }: { o: any; now: number; onChange: () 
           <div className="space-y-2">
             {REASONS.map((r) => (
               <label key={r} className={`flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border-2 px-3 text-sm font-medium ${reason === r ? "border-brand bg-mint" : "border-line"}`}>
-                <input type="radio" name={`reason-${o.code}`} checked={reason === r} onChange={() => setReason(r)} className="h-5 w-5 accent-[#15843A]" /> {r}
+                <input type="radio" name={`reason-${o.code}`} checked={reason === r} onChange={() => setReason(r)} className="h-5 w-5 accent-[#1C9A41]" /> {r}
               </label>
             ))}
           </div>

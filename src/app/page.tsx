@@ -1,15 +1,17 @@
 "use client";
 import Link from "next/link";
-import { favs, setup } from "@/lib/client/store";
+import { setup } from "@/lib/client/store";
 import { useApi, useHydrated } from "@/lib/client/hooks";
 import type { CatalogueProduct } from "@/lib/types";
 import { Welcome } from "@/components/customer/Welcome";
 import { ShopFrame } from "@/components/customer/Frame";
 import { SearchBox } from "@/components/customer/SearchBox";
-import { StoreCard } from "@/components/customer/StoreCard";
 import { ProductRow } from "@/components/customer/ProductCard";
 import { useNearbyStores } from "@/components/customer/useStores";
-import { CategoryTiles } from "@/components/customer/CategoryTiles";
+import { CategoryTabs, CategoryTiles } from "@/components/customer/CategoryTiles";
+import { IconChevron, IconList, IconStore } from "@/components/icons";
+import { rupees } from "@/lib/money";
+import { Logo } from "@/components/Logo";
 import { ErrorBox, Skeleton } from "@/components/ui";
 
 export default function HomePage() {
@@ -17,67 +19,85 @@ export default function HomePage() {
   const hydrated = useHydrated();
   if (!hydrated) return <div className="mx-auto max-w-xl space-y-3 p-5"><Skeleton className="h-10 w-40" /><Skeleton className="h-72" /></div>;
   if (!s.address) return <Welcome />;
-  return <ShopFrame>{(storeId) => <Storefront storeId={storeId} />}</ShopFrame>;
+  return <ShopFrame ownHeader>{(storeId) => <Storefront storeId={storeId} />}</ShopFrame>;
 }
+
+// Aisles shown on the home screen, in shopping order.
+const AISLES: { title: string; cats: string[]; see: string; extra?: string[] }[] = [
+  { title: "Fruits & vegetables", cats: ["fruits-vegetables"], see: "fruits-vegetables" },
+  { title: "Dairy, bread & eggs", cats: ["dairy-eggs"], see: "dairy-eggs", extra: ["bread-400g"] },
+  { title: "Atta, rice & dal", cats: ["rice-grains"], see: "rice-grains" },
+  { title: "Snacks & drinks", cats: ["snacks", "drinks"], see: "snacks" },
+  { title: "Home & personal care", cats: ["household", "personal-care"], see: "household" },
+];
 
 function Storefront({ storeId }: { storeId: string }) {
   const s = setup.use();
-  const f = favs.use();
   const { stores } = useNearbyStores(s.address);
   const store = stores?.find((x) => x.id === storeId);
-  const featured = useApi<{ products: CatalogueProduct[] }>(`/stores/${storeId}/products?section=featured`);
+  const all = useApi<{ products: CatalogueProduct[] }>(`/stores/${storeId}/products`);
   const again = useApi<{ products: CatalogueProduct[] }>(`/stores/${storeId}/products?section=buy-again`);
-  const all = useApi<{ products: CatalogueProduct[] }>(Object.keys(f.ids).length ? `/stores/${storeId}/products` : null);
-  const favourites = (all.data?.products ?? []).filter((p) => f.ids[p.productId]);
+  const a = s.address!;
+  const products = all.data?.products ?? [];
 
   return (
     <div className="space-y-6">
-      <div className="-mx-4 -mt-4 rounded-b-[28px] bg-gradient-to-b from-hero via-hero-2 to-white px-4 pb-5 pt-2 lg:mx-0 lg:mt-0 lg:rounded-[28px] lg:p-5">
+      <header className="-mx-4 -mt-4 space-y-3 bg-gradient-to-b from-hero via-hero-2 to-white px-4 pt-3 lg:mx-0 lg:mt-0 lg:rounded-2xl lg:p-5">
+        <div className="hidden items-center justify-between sm:flex"><Logo /><Link href="/demo" className="inline-flex min-h-10 items-center rounded-xl border border-dashed border-brand bg-white px-3 text-xs font-semibold uppercase tracking-wide text-brand">Demo switcher</Link></div>
+        <div className="flex items-start gap-3">
+          <Link href="/address" className="group min-w-0 flex-1" aria-label={`Delivery in ${store ? `${store.etaMin} to ${store.etaMax} minutes` : "a few minutes"} to ${a.flat ? a.flat + ", " : ""}${a.line}. Change address`}>
+            <span className="block text-xs font-bold tracking-wide">KripFresh delivers in</span>
+            <span className="block text-[26px] font-extrabold leading-tight tracking-tight">{store ? `${store.etaMin}–${store.etaMax} minutes` : "…"}</span>
+            <span className="flex min-w-0 items-center gap-1 text-[13px]">
+              <b className="shrink-0 uppercase">{a.label ?? "Home"}</b><span className="shrink-0">–</span>
+              <span className="truncate">{[a.flat, a.floor && `${a.floor} floor`, a.line].filter(Boolean).join(", ")}</span>
+              <IconChevron className="h-4 w-4 shrink-0 rotate-90" />
+            </span>
+          </Link>
+          <Link href="/orders" className="grid h-[52px] w-[52px] shrink-0 place-items-center content-center rounded-full bg-white text-[10px] font-semibold text-ink shadow-[var(--shadow-soft)]">
+            <IconList className="h-5 w-5" />Orders
+          </Link>
+        </div>
         <SearchBox storeId={storeId} />
+        <CategoryTabs />
+      </header>
+
+      <div className="flex items-center gap-3 rounded-xl bg-mint px-3 py-2.5 text-[13px]">
+        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-white text-brand"><IconStore className="h-5 w-5" /></span>
+        <span className="min-w-0 flex-1"><b>{store?.name ?? s.storeName}</b>{store ? ` · ${store.distanceLabel}` : ""}
+          <span className="block text-xs text-ink-2">{store ? (store.deliveryFee ? `Delivery ${rupees(store.deliveryFee)} · free above ${rupees(store.freeDeliveryAbove)}` : "Free delivery") : ""}</span></span>
+        <Link href="/stores" className="inline-flex min-h-11 shrink-0 items-center px-1 text-[13px] font-semibold text-brand">Change store</Link>
       </div>
 
-      <section aria-label={`This week at ${store?.name ?? "your store"}`} className="relative overflow-hidden rounded-[26px] bg-[radial-gradient(120%_140%_at_100%_0%,#2DBE5A_0%,transparent_55%),linear-gradient(135deg,#27A84F,#0E5F2A)] p-5 text-white">
-        <span className="absolute right-4 top-3 rounded-full bg-white px-2.5 py-0.5 text-[11px] font-bold text-brand-dark">Below MRP</span>
-        <h2 className="max-w-[60%] text-[22px] font-bold uppercase leading-[1.1] tracking-tight">Fresh &amp; healthy vegetables</h2>
-        <p className="mt-1.5 max-w-[58%] text-xs text-white/90">Picked this morning for {store?.name ?? "your store"}. Prices as marked on each product.</p>
-        <Link href="/category/fruits-vegetables" className="mt-3 inline-flex min-h-10 items-center rounded-full bg-white px-4 text-sm font-semibold text-brand-dark">Shop vegetables</Link>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/img/p/basket.webp" alt="" className="pointer-events-none absolute -bottom-2 -right-1 w-[44%] max-w-[190px] drop-shadow-[0_10px_18px_rgba(0,0,0,.25)]" />
-      </section>
+      {again.data && again.data.products.length > 0 ? (
+        <Aisle title="Buy again" products={again.data.products} storeId={storeId} />
+      ) : null}
 
-      <StoreCard store={store} name={s.storeName} />
-
-      <section aria-labelledby="cats">
-        <h2 id="cats" className="mb-3 text-lg font-semibold">Most popular categories</h2>
+      <section aria-labelledby="cats" className="space-y-3">
+        <h2 id="cats" className="text-lg font-bold tracking-tight">Shop by category</h2>
         <CategoryTiles />
       </section>
 
-      {favourites.length > 0 ? (
-        <section aria-labelledby="favs">
-          <h2 id="favs" className="mb-3 text-lg font-semibold">Your favourites</h2>
-          <ProductRow products={favourites} storeId={storeId} />
-        </section>
-      ) : null}
-
-      {again.data && again.data.products.length > 0 ? (
-        <section aria-labelledby="again">
-          <div className="mb-3 flex items-baseline justify-between">
-            <h2 id="again" className="text-lg font-semibold">Buy again</h2>
-            <span className="text-xs text-ink-2">From your past orders here</span>
-          </div>
-          <ProductRow products={again.data.products} storeId={storeId} />
-        </section>
-      ) : null}
-
-      <section aria-labelledby="fresh">
-        <div className="mb-3 flex items-baseline justify-between">
-          <h2 id="fresh" className="text-lg font-semibold">Fresh from this store</h2>
-          <Link href="/category/fruits-vegetables" className="inline-flex min-h-11 items-center text-sm font-semibold text-brand hover:underline">See all</Link>
-        </div>
-        {featured.error ? <ErrorBox message={featured.error.message} onRetry={featured.reload} /> : !featured.data ? (
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4"><Skeleton className="h-72" /><Skeleton className="h-72" /></div>
-        ) : <ProductRow products={featured.data.products} storeId={storeId} />}
-      </section>
+      {all.error ? <ErrorBox message={all.error.message} onRetry={all.reload} /> : !all.data ? (
+        <div className="flex gap-2.5"><Skeleton className="h-64 w-[140px]" /><Skeleton className="h-64 w-[140px]" /></div>
+      ) : AISLES.map((ai) => (
+        <Aisle key={ai.title} title={ai.title} see={ai.see} storeId={storeId}
+          products={products.filter((p) => ai.cats.includes(p.category) || ai.extra?.includes(p.productId)).sort((x, y) => Number(y.inStock) - Number(x.inStock)).slice(0, 12)} />
+      ))}
     </div>
+  );
+}
+
+function Aisle({ title, products, storeId, see }: { title: string; products: CatalogueProduct[]; storeId: string; see?: string }) {
+  if (!products.length) return null;
+  const id = "aisle-" + title.replace(/\W+/g, "-").toLowerCase();
+  return (
+    <section aria-labelledby={id} className="space-y-2.5">
+      <div className="flex items-baseline justify-between">
+        <h2 id={id} className="text-lg font-bold tracking-tight">{title}</h2>
+        {see ? <Link href={`/category/${see}`} className="inline-flex min-h-10 items-center text-[13px] font-semibold text-brand">see all</Link> : null}
+      </div>
+      <ProductRow products={products} storeId={storeId} />
+    </section>
   );
 }
