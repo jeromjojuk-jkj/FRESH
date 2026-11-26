@@ -18,7 +18,7 @@ const g = globalThis as unknown as { __nbDb?: Promise<Driver> };
 
 async function createPg(url: string): Promise<Driver> {
   const { Pool } = await import("pg");
-  const pool = new Pool({ connectionString: url, max: 10, ssl: /supabase|sslmode=require/.test(url) ? { rejectUnauthorized: false } : undefined });
+  const pool = new Pool({ connectionString: url, max: process.env.VERCEL ? 3 : 10, ssl: /supabase|sslmode=require/.test(url) ? { rejectUnauthorized: false } : undefined });
   const query: Q = async (sql, params = []) => {
     const r = await pool.query(sql, params as any[]);
     return { rows: r.rows, rowCount: r.rowCount ?? 0 };
@@ -84,8 +84,14 @@ async function createPglite(): Promise<Driver> {
 
 async function init(): Promise<Driver> {
   const url = process.env.DATABASE_URL;
+  if (!url && process.env.VERCEL) {
+    // Serverless instances don't share a disk, so the embedded database can't work there.
+    throw new Error("DATABASE_URL is not set. On Vercel, add a Postgres database (e.g. Neon from the Storage tab) to this project and redeploy.");
+  }
   const driver = url ? await createPg(url) : await createPglite();
   await driver.tx(async (q) => {
+    // Several serverless instances may boot at once: only one creates and seeds the tables.
+    if (url) await q("SELECT pg_advisory_xact_lock(727274)");
     await q(SCHEMA_SQL);
     const { rows } = await q("SELECT count(*)::int AS n FROM stores");
     if (rows[0].n === 0) await seedDatabase(q);

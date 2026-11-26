@@ -50,6 +50,15 @@ Suggested walk-through: open three tabs (customer, `/store`, `/rider`). Place an
 
 All demo stores are set to open 24 hours so the demo works at any time. Change hours in Store → Settings to see the “Closed” state.
 
+## Deploy on Vercel
+
+1. In Vercel, **Add New → Project**, import `jeromjojuk-jkj/FRESH` and keep the detected Next.js settings. Branch: `main`.
+2. Before the first deploy, or right after it, open the project's **Storage** tab, choose **Create Database → Neon (Postgres)** and connect it to the project. This adds `DATABASE_URL` for you. Prefer the pooled connection string.
+3. Under **Settings → Environment Variables**, add `SESSION_SECRET` (any long random text).
+4. **Redeploy**. On the first request the app creates its tables and loads the demo data; the start-up takes a lock, so only one server instance does this.
+
+Without `DATABASE_URL` the app refuses to start on Vercel, because serverless instances don't share a disk and the embedded database would lose orders. Every push to `main` then deploys automatically.
+
 ## Key rules, and where they live
 
 - **3 km rule:** `src/lib/geo.ts`. The server computes straight-line distance with the haversine formula, to the whole metre. A store is eligible when the distance is ≤ 3,000 m, so 3.00 km is in and 3.01 km is out. Road travel time is estimated separately (`providers/routing.ts`) and used only for delivery estimates.
